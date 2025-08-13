@@ -1,0 +1,28 @@
+#Core
+fastapi
+uvicorn
+pydantic
+python-dotenv
+
+#Data processing
+pandas
+numpy
+
+#AI integration
+openai
+
+#Config and utilities
+pyyaml
+jsonschema
+
+#Testing
+pytest
+pytest-asyncio
+
+#Logging
+structlog
+
+#Dev tools
+black
+flake8
+mypy
