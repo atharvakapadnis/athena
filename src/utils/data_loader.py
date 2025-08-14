@@ -2,34 +2,40 @@
 Data loading and validation utilities for Smart Description Iterative Improvement System
 """
 import json
-import logging
 import pandas as pd
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from .config import CLEANED_DATA_PATH, HTS_REFERENCE_PATH, ensure_directories
+from .data_validator import DataValidator
+from .logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class DataLoader:
-    """Handles loading and validation of HTS classification data"""
+    """Enhanced data loader with validation"""
     
     def __init__(self):
         self.product_data: Optional[pd.DataFrame] = None
         self.hts_reference: Optional[List[Dict]] = None
+        self.validator = DataValidator()
         
         # Ensure directories exist
         ensure_directories()
     
-    def load_product_data(self, file_path: Optional[Path] = None) -> pd.DataFrame:
+    def load_product_data(self, file_path: Optional[Path] = None, validate: bool = True) -> pd.DataFrame:
         """
         Load and validate product data from CSV
         
         Args:
             file_path: Path to CSV file (defaults to cleaned data)
+            validate: Whether to perform data validation
             
         Returns:
             DataFrame with product data
         """
+        if self.product_data is not None:
+            return self.product_data
+            
         if file_path is None:
             file_path = CLEANED_DATA_PATH
             
@@ -47,7 +53,15 @@ class DataLoader:
             if missing_columns:
                 raise ValueError(f"Missing required columns: {missing_columns}")
             
-            # Basic data validation
+            if validate:
+                validation_results = self.validator.validate_product_data(df)
+                logger.info(f"Data validation results: {validation_results}")
+                
+                if validation_results['data_quality_score'] < 0.8:
+                    logger.warning(f"Data quality score low: {validation_results['data_quality_score']}")
+                    logger.warning(f"Issues: {validation_results['issues']}")
+            
+            # Basic data validation and filtering
             df = self._validate_product_data(df)
             self.product_data = df
             
@@ -57,16 +71,20 @@ class DataLoader:
             logger.error(f"Error loading product data: {e}")
             raise
     
-    def load_hts_reference(self, file_path: Optional[Path] = None) -> List[Dict]:
+    def load_hts_reference(self, file_path: Optional[Path] = None, validate: bool = True) -> List[Dict]:
         """
         Load HTS reference data from JSON
         
         Args:
             file_path: Path to JSON file (defaults to HTS reference)
+            validate: Whether to perform data validation
             
         Returns:
             List of HTS code dictionaries
         """
+        if self.hts_reference is not None:
+            return self.hts_reference
+            
         if file_path is None:
             file_path = HTS_REFERENCE_PATH
             
@@ -75,6 +93,13 @@ class DataLoader:
                 hts_data = json.load(f)
             
             logger.info(f"Loaded {len(hts_data)} HTS codes from {file_path}")
+            
+            if validate:
+                validation_results = self.validator.validate_hts_reference(hts_data)
+                logger.info(f"HTS validation results: {validation_results}")
+                
+                if not validation_results['valid_hierarchy']:
+                    logger.warning(f"HTS hierarchy issues: {validation_results['issues']}")
             
             # Validate HTS data structure
             hts_data = self._validate_hts_data(hts_data)
@@ -117,38 +142,19 @@ class DataLoader:
         validated_data = []
         
         for item in hts_data:
-            if isinstance(item, dict):
-                # Check for htsno field (actual data structure)
-                if 'htsno' in item:
-                    hts_code = str(item['htsno']).strip()
-                    if hts_code and hts_code.count('.') >= 0:  # Allow any number of dots
-                        validated_data.append(item)
-                # Also check for hts_code field (alternative structure)
-                elif 'hts_code' in item:
-                    hts_code = str(item['hts_code']).strip()
-                    if hts_code and hts_code.count('.') >= 0:
-                        validated_data.append(item)
+            if isinstance(item, dict) and item.get('htsno'):
+                # Basic validation - item has required structure
+                validated_data.append(item)
         
         logger.info(f"Validated HTS data: {len(validated_data)} valid codes")
         return validated_data
     
-    def get_data_summary(self) -> Dict[str, any]:
+    def get_data_summary(self) -> Dict:
         """Get summary statistics of loaded data"""
         if self.product_data is None or self.hts_reference is None:
             raise ValueError("Data not loaded. Call load_product_data() and load_hts_reference() first.")
         
-        return {
-            'products': {
-                'total': len(self.product_data),
-                'unique_hts_codes': self.product_data['final_hts'].nunique(),
-                'material_classes': self.product_data['material_class'].value_counts().to_dict(),
-                'product_groups': self.product_data.get('product_group', pd.Series()).value_counts().to_dict()
-            },
-            'hts_reference': {
-                'total_codes': len(self.hts_reference),
-                'chapters': list(set(code.get('htsno', code.get('hts_code', ''))[:4] for code in self.hts_reference if code.get('htsno') or code.get('hts_code')))
-            }
-        }
+        return self.validator.get_data_summary(self.product_data, self.hts_reference)
     
     def get_sample_products(self, n: int = 10) -> List[Dict]:
         """Get a sample of products for testing"""
