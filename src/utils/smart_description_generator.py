@@ -6,6 +6,7 @@ product patterns and combining them with HTS hierarchy information.
 """
 import re
 import logging
+import pandas as pd
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
@@ -24,6 +25,17 @@ class SmartSecondaryDescription:
     extracted_features: Dict[str, str]
     confidence: str
     analysis_details: Dict[str, any]
+
+@dataclass
+class DescriptionResult:
+    """Enhanced result container with confidence scoring"""
+    original_description: str
+    enhanced_description: str
+    confidence_score: float
+    confidence_level: str  # High, Medium, Low
+    extracted_features: Dict[str, str]
+    hts_context: Dict[str, str]
+    processing_metadata: Dict[str, any]
 
 class SmartDescriptionGenerator:
     """
@@ -89,6 +101,49 @@ class SmartDescriptionGenerator:
             'ANSI': 'ANSI standard'
         }
     
+    def generate_description(self, product_data: Dict) -> DescriptionResult:
+        """Generate enhanced description with confidence scoring"""
+        try:
+            # Extract product information
+            item_description = product_data.get('item_description', '')
+            material_detail = product_data.get('material_detail', '')
+            final_hts = product_data.get('final_hts', '')
+            hts_description = product_data.get('hts_description', '')
+            
+            # Parse product description
+            parsed_features = self._parse_product_description(item_description)
+            
+            # Get HTS context
+            hts_context = self._get_hts_context(final_hts, hts_description)
+            
+            # Generate enhanced description
+            enhanced_description = self._build_description(parsed_features, material_detail, hts_context)
+            
+            # Calculate confidence
+            confidence_score, confidence_level = self._calculate_confidence(parsed_features, hts_context)
+            
+            # Create result
+            result = DescriptionResult(
+                original_description=item_description,
+                enhanced_description=enhanced_description,
+                confidence_score=confidence_score,
+                confidence_level=confidence_level,
+                extracted_features=parsed_features,
+                hts_context=hts_context,
+                processing_metadata={
+                    'timestamp': pd.Timestamp.now().isoformat(),
+                    'version': '1.0',
+                    'patterns_used': list(parsed_features.keys())
+                }
+            )
+            
+            logger.debug(f"Generated description for {product_data.get('item_id', 'unknown')}: {confidence_level}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error generating description: {e}")
+            raise
+    
     def generate_smart_description(
         self,
         item_description: str,
@@ -132,6 +187,108 @@ class SmartDescriptionGenerator:
                 'parsing_method': 'smart_context_aware'
             }
         )
+    
+    def _get_hts_context(self, hts_code: str, hts_description: str) -> Dict[str, str]:
+        """Get HTS context information"""
+        context = {
+            'hts_code': hts_code,
+            'hts_description': hts_description,
+            'hierarchical_description': '',
+            'product_category': '',
+            'material_requirements': ''
+        }
+        
+        try:
+            # Get hierarchical information
+            hierarchy_info = self.hts_hierarchy.get_classification_context(hts_code)
+            if hierarchy_info:
+                context['hierarchical_description'] = hierarchy_info.get('full_description', '')
+                context['product_category'] = hierarchy_info.get('primary_category', '')
+                context['material_requirements'] = hierarchy_info.get('material_context', '')
+        except Exception as e:
+            logger.warning(f"Could not get HTS context for {hts_code}: {e}")
+        
+        return context
+    
+    def _build_description(self, parsed_features: Dict, material_detail: str, hts_context: Dict) -> str:
+        """Build enhanced description from parsed features"""
+        description_parts = []
+        
+        # Add company if available
+        if 'company' in parsed_features:
+            description_parts.append(parsed_features['company'])
+        
+        # Add dimensions
+        if 'dimensions' in parsed_features:
+            description_parts.append(parsed_features['dimensions'])
+        
+        # Add material
+        if material_detail:
+            description_parts.append(material_detail.title())
+        
+        # Add product type
+        if 'product_type' in parsed_features:
+            description_parts.append(parsed_features['product_type'])
+        elif hts_context.get('product_category'):
+            description_parts.append(hts_context['product_category'])
+        
+        # Add connection type
+        if 'connection_type' in parsed_features:
+            description_parts.append(f"with {parsed_features['connection_type']}")
+        
+        # Add specifications
+        if 'specification' in parsed_features:
+            description_parts.append(f"({parsed_features['specification']})")
+        
+        # Combine parts
+        enhanced_description = " ".join(description_parts)
+        
+        # Clean up and format
+        enhanced_description = enhanced_description.strip()
+        if enhanced_description:
+            enhanced_description = enhanced_description[0].upper() + enhanced_description[1:]
+        
+        return enhanced_description
+    
+    def _calculate_confidence(self, parsed_features: Dict, hts_context: Dict) -> Tuple[float, str]:
+        """Calculate confidence score and level"""
+        score = 0.0
+        max_score = 10.0
+        
+        # Feature extraction scoring (more generous)
+        if 'product_type' in parsed_features:
+            score += 3.0  # Increased from 2.0
+        if 'dimensions' in parsed_features:
+            score += 3.0  # Increased from 2.0
+        if 'connection_type' in parsed_features:
+            score += 2.0  # Increased from 1.5
+        if 'specification' in parsed_features:
+            score += 1.5  # Increased from 1.0
+        if 'company' in parsed_features:
+            score += 1.5  # Increased from 1.0
+        
+        # Basic parsing bonus (if we extracted anything meaningful)
+        if len(parsed_features) > 0:
+            score += 1.0
+        
+        # HTS context scoring (reduced importance since it's failing)
+        if hts_context.get('hierarchical_description'):
+            score += 0.5  # Reduced from 1.5
+        if hts_context.get('product_category'):
+            score += 0.5  # Reduced from 1.0
+        
+        # Normalize score
+        confidence_score = min(score / max_score, 1.0)
+        
+        # Determine confidence level (adjusted thresholds)
+        if confidence_score >= 0.7:  # Reduced from 0.8
+            confidence_level = "High"
+        elif confidence_score >= 0.4:  # Reduced from 0.6
+            confidence_level = "Medium"
+        else:
+            confidence_level = "Low"
+        
+        return confidence_score, confidence_level
     
     def _parse_product_description(self, description: str) -> Dict[str, str]:
         """
