@@ -2,3 +2,7 @@ guidelines/
 template/
 chats/
 .env
+*.csv
+*.json
+*.log
+*.pyc
