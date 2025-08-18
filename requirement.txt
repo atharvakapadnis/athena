@@ -1,5 +1,6 @@
 #Core
 fastapi
+scikit-learn
 uvicorn
 pydantic
 python-dotenv

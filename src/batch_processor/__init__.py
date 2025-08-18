@@ -8,7 +8,7 @@ try:
     from .batch_manager import BatchManager, BatchConfig, BatchStatus
     from .processor import BatchProcessor, ProcessingResult, BatchResult
     from .progress_tracker import ProgressTracker
-    from ..utils.logger import get_logger
+    from utils.logger import get_logger
 except ImportError:
     # Fallback for when running as script
     from batch_processor.batch_manager import BatchManager, BatchConfig, BatchStatus
