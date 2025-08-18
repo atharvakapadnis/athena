@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .pattern_analyzer import PatternAnalyzer
 from .rule_suggester import RuleSuggester
-from ..utils.logger import get_logger
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
