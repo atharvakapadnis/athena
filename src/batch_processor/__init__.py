@@ -8,12 +8,14 @@ try:
     from .batch_manager import BatchManager, BatchConfig, BatchStatus
     from .processor import BatchProcessor, ProcessingResult, BatchResult
     from .progress_tracker import ProgressTracker
+    from .feedback_loop import FeedbackLoopManager, FeedbackItem, FeedbackSummary, RefinementAction
     from utils.logger import get_logger
 except ImportError:
     # Fallback for when running as script
     from batch_processor.batch_manager import BatchManager, BatchConfig, BatchStatus
     from batch_processor.processor import BatchProcessor, ProcessingResult, BatchResult
     from batch_processor.progress_tracker import ProgressTracker
+    from batch_processor.feedback_loop import FeedbackLoopManager, FeedbackItem, FeedbackSummary, RefinementAction
     from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -149,5 +151,9 @@ __all__ = [
     'BatchProcessor',
     'ProgressTracker',
     'ProcessingResult',
-    'BatchResult'
+    'BatchResult',
+    'FeedbackLoopManager',
+    'FeedbackItem',
+    'FeedbackSummary',
+    'RefinementAction'
 ]

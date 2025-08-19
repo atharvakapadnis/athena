@@ -16,6 +16,7 @@ from .interface import RuleReviewInterface, RuleSuggestion, RuleDecision
 from .validator import RuleValidator, ValidationResult
 from .manager import RuleManager
 from .workflow import ApprovalWorkflow, ApprovalRequest
+from .rule_analyzer import RuleImpactAnalyzer, RuleImpact, RulePerformance
 
 __all__ = [
     'RuleReviewInterface',
@@ -25,5 +26,8 @@ __all__ = [
     'ValidationResult',
     'RuleManager',
     'ApprovalWorkflow',
-    'ApprovalRequest'
+    'ApprovalRequest',
+    'RuleImpactAnalyzer',
+    'RuleImpact',
+    'RulePerformance'
 ]
