@@ -10,13 +10,23 @@ from .ai_client import AIClient
 from .pattern_analyzer import PatternAnalyzer
 from .rule_suggester import RuleSuggester, RuleSuggestion
 from .analysis_aggregator import AnalysisAggregator
+from .notes_manager import NotesManager, AINote, HumanFeedback
+from .notes_pattern_analyzer import NotesPatternAnalyzer
+from .notes_exporter import NotesExporter
+from .notes_integration import NotesIntegration
 
 __all__ = [
     'AIClient',
     'PatternAnalyzer', 
     'RuleSuggester',
     'RuleSuggestion',
-    'AnalysisAggregator'
+    'AnalysisAggregator',
+    'NotesManager',
+    'AINote',
+    'HumanFeedback',
+    'NotesPatternAnalyzer',
+    'NotesExporter',
+    'NotesIntegration'
 ]
 
 # Version information

@@ -1,6 +1,6 @@
 # src/batch_processor/processor.py
 import pandas as pd
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
 import time
@@ -43,7 +43,14 @@ class BatchResult:
     processing_time: float
     confidence_distribution: Dict[str, int]
     results: List[ProcessingResult]
-    summary: Dict[str, any]
+    summary: Dict[str, Any] = None  # Summary statistics including success_rate
+    
+    @property
+    def success_rate(self) -> float:
+        """Get success rate from summary or calculate it"""
+        if self.summary and 'success_rate' in self.summary:
+            return self.summary['success_rate']
+        return self.successful_items / self.total_items if self.total_items > 0 else 0.0
 
 class BatchProcessor:
     """Processes batches of products with confidence scoring"""
