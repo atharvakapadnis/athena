@@ -174,6 +174,134 @@ class ProgressTracker:
         
         return trends
     
+    def get_recent_batch_results_for_scaling(self, count: int = 5) -> List[Dict]:
+        """Get recent batch results in format suitable for scaling decisions"""
+        history = self._load_history()
+        
+        if not history:
+            return []
+        
+        # Get most recent batches
+        recent_batches = history[-count:] if len(history) >= count else history
+        
+        # Convert to scaling-friendly format
+        scaling_batch_results = []
+        for batch_data in recent_batches:
+            batch_result = {
+                'batch_id': batch_data.get('batch_id', 'unknown'),
+                'total_items': batch_data.get('total_items', 0),
+                'successful_items': batch_data.get('successful_items', 0),
+                'failed_items': batch_data.get('failed_items', 0),
+                'processing_time': batch_data.get('processing_time', 0.0),
+                'confidence_distribution': batch_data.get('confidence_distribution', {'High': 0, 'Medium': 0, 'Low': 0}),
+                'success_rate': batch_data.get('successful_items', 0) / batch_data.get('total_items', 1)
+            }
+            scaling_batch_results.append(batch_result)
+        
+        return scaling_batch_results
+    
+    def get_scaling_performance_metrics(self, window_size: int = 5) -> Dict[str, float]:
+        """Get performance metrics specifically for scaling decisions"""
+        recent_batches = self.get_recent_batch_results_for_scaling(window_size)
+        
+        if not recent_batches:
+            return {
+                'high_confidence_rate': 0.0,
+                'avg_processing_time': 0.0,
+                'success_rate': 0.0,
+                'stability_score': 0.0,
+                'batch_count': 0
+            }
+        
+        # Calculate metrics
+        total_items = sum(batch['total_items'] for batch in recent_batches)
+        high_confidence_items = sum(batch['confidence_distribution'].get('High', 0) for batch in recent_batches)
+        successful_items = sum(batch['successful_items'] for batch in recent_batches)
+        
+        high_confidence_rate = high_confidence_items / total_items if total_items > 0 else 0.0
+        success_rate = successful_items / total_items if total_items > 0 else 0.0
+        avg_processing_time = sum(batch['processing_time'] for batch in recent_batches) / len(recent_batches)
+        
+        # Calculate stability (consistency of high confidence rates)
+        confidence_rates = [
+            batch['confidence_distribution'].get('High', 0) / batch['total_items'] 
+            if batch['total_items'] > 0 else 0.0
+            for batch in recent_batches
+        ]
+        
+        if len(confidence_rates) > 1:
+            mean_rate = sum(confidence_rates) / len(confidence_rates)
+            variance = sum((rate - mean_rate) ** 2 for rate in confidence_rates) / len(confidence_rates)
+            stability_score = max(0.0, 1.0 - variance)
+        else:
+            stability_score = 1.0
+        
+        return {
+            'high_confidence_rate': high_confidence_rate,
+            'avg_processing_time': avg_processing_time,
+            'success_rate': success_rate,
+            'stability_score': stability_score,
+            'batch_count': len(recent_batches),
+            'total_items': total_items
+        }
+    
+    def should_trigger_scaling_evaluation(self, min_batches: int = 3) -> bool:
+        """Check if enough data exists to trigger a scaling evaluation"""
+        history = self._load_history()
+        return len(history) >= min_batches
+    
+    def get_scaling_trend_analysis(self, window_size: int = 10) -> Dict[str, any]:
+        """Get trend analysis specifically for scaling decisions"""
+        df = self.get_batch_performance_metrics()
+        
+        if df.empty or len(df) < 2:
+            return {'status': 'insufficient_data', 'recommendation': 'maintain'}
+        
+        # Get recent data
+        recent_df = df.tail(window_size)
+        
+        # Calculate trends
+        if len(recent_df) >= 2:
+            # Split into first and second half for trend analysis
+            mid_point = len(recent_df) // 2
+            first_half = recent_df.iloc[:mid_point]
+            second_half = recent_df.iloc[mid_point:]
+            
+            first_confidence = first_half['high_confidence_rate'].mean()
+            second_confidence = second_half['high_confidence_rate'].mean()
+            
+            first_time = first_half['processing_time'].mean()
+            second_time = second_half['processing_time'].mean()
+            
+            # Determine trend direction
+            confidence_trend = 'improving' if second_confidence > first_confidence * 1.05 else \
+                             'declining' if second_confidence < first_confidence * 0.95 else 'stable'
+            
+            time_trend = 'improving' if second_time < first_time * 0.95 else \
+                        'declining' if second_time > first_time * 1.05 else 'stable'
+            
+            # Make scaling recommendation
+            if confidence_trend == 'improving' and time_trend in ['improving', 'stable']:
+                recommendation = 'consider_increase'
+            elif confidence_trend == 'declining' or time_trend == 'declining':
+                recommendation = 'consider_decrease'
+            else:
+                recommendation = 'maintain'
+        else:
+            confidence_trend = 'stable'
+            time_trend = 'stable'
+            recommendation = 'maintain'
+        
+        return {
+            'status': 'analyzed',
+            'confidence_trend': confidence_trend,
+            'time_trend': time_trend,
+            'recommendation': recommendation,
+            'window_size': len(recent_df),
+            'latest_confidence_rate': recent_df['high_confidence_rate'].iloc[-1] if not recent_df.empty else 0.0,
+            'latest_processing_time': recent_df['processing_time'].iloc[-1] if not recent_df.empty else 0.0
+        }
+    
     def _load_progress(self) -> Dict:
         """Load progress data from file"""
         if not self.progress_file.exists():

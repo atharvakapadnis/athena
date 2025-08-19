@@ -55,6 +55,9 @@ class BatchManager:
         
         self.current_batch_id = None
         self.batch_history = []
+        
+        # Dynamic batch size tracking
+        self.dynamic_batch_size = None  # Will override config.batch_size if set
     
     def create_batch(self, config: BatchConfig) -> str:
         """Create a new batch from the dataset"""
@@ -63,9 +66,12 @@ class BatchManager:
         # Load product data
         df = self.data_loader.load_product_data()
         
+        # Use dynamic batch size if set, otherwise use config batch size
+        effective_batch_size = self.dynamic_batch_size if self.dynamic_batch_size is not None else config.batch_size
+        
         # Calculate batch indices
         start_idx = config.start_index
-        end_idx = min(start_idx + config.batch_size, len(df))
+        end_idx = min(start_idx + effective_batch_size, len(df))
         
         # Extract batch data
         batch_df = df.iloc[start_idx:end_idx].copy()
@@ -74,6 +80,8 @@ class BatchManager:
         batch_metadata = {
             'batch_id': batch_id,
             'config': asdict(config),
+            'effective_batch_size': effective_batch_size,
+            'dynamic_scaling_active': self.dynamic_batch_size is not None,
             'data_indices': {'start': start_idx, 'end': end_idx},
             'created_at': datetime.now().isoformat(),
             'status': 'pending'
@@ -158,3 +166,28 @@ class BatchManager:
             batches.append(batch_info)
         
         return batches
+    
+    def set_dynamic_batch_size(self, batch_size: int):
+        """Set dynamic batch size that overrides config batch size"""
+        if batch_size <= 0:
+            raise ValueError("Batch size must be positive")
+        
+        old_size = self.dynamic_batch_size
+        self.dynamic_batch_size = batch_size
+        
+        logger.info(f"Dynamic batch size updated: {old_size} → {batch_size}")
+    
+    def get_current_batch_size(self) -> int:
+        """Get the current effective batch size"""
+        return self.dynamic_batch_size if self.dynamic_batch_size is not None else self.settings.get('batch_size', 50)
+    
+    def clear_dynamic_batch_size(self):
+        """Clear dynamic batch size and return to config-based sizing"""
+        old_size = self.dynamic_batch_size
+        self.dynamic_batch_size = None
+        
+        logger.info(f"Dynamic batch size cleared: {old_size} → config-based")
+    
+    def is_dynamic_scaling_active(self) -> bool:
+        """Check if dynamic scaling is currently active"""
+        return self.dynamic_batch_size is not None

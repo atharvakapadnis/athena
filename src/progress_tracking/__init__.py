@@ -2,15 +2,23 @@
 """
 Progress Tracking Module for Smart Description Iterative Improvement
 
-This module provides quality monitoring and progress tracking functionality
-for the iterative improvement system.
+This module provides comprehensive progress tracking, metrics collection, 
+performance analysis, and dashboard functionality for the iterative improvement system.
 """
 
 from .quality_monitor import QualityMonitor, QualityMetrics, TrendAnalysis
+from .metrics_collector import MetricsCollector, ProcessingMetrics, RuleMetrics
+from .performance_analyzer import PerformanceAnalyzer
+from .dashboard import ProgressDashboard
 
 __all__ = [
     'QualityMonitor',
     'QualityMetrics', 
-    'TrendAnalysis'
+    'TrendAnalysis',
+    'MetricsCollector',
+    'ProcessingMetrics',
+    'RuleMetrics',
+    'PerformanceAnalyzer',
+    'ProgressDashboard'
 ]
 
