@@ -6,7 +6,7 @@ import statistics
 
 try:
     from .metrics_collector import MetricsCollector, ProcessingMetrics, RuleMetrics
-    from utils.logger import get_logger
+    from ..utils.logger import get_logger
 except ImportError:
     # Fallback for when running as script
     from metrics_collector import MetricsCollector, ProcessingMetrics, RuleMetrics

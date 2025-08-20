@@ -8,7 +8,7 @@ import csv
 from pathlib import Path
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
-from utils.logger import get_logger
+from ..utils.logger import get_logger
 from .notes_manager import NotesManager, AINote, HumanFeedback
 from .notes_pattern_analyzer import NotesPatternAnalyzer
 

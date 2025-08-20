@@ -9,8 +9,8 @@ from datetime import datetime, timedelta
 import json
 import uuid
 from pathlib import Path
-from utils.logger import get_logger
-from utils.config import DATA_DIR
+from ..utils.logger import get_logger
+from ..utils.config import DATA_DIR
 
 logger = get_logger(__name__)
 

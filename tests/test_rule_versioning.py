@@ -10,10 +10,10 @@ from unittest.mock import patch, MagicMock
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from rule_versioning.version_manager import RuleVersionManager, RuleVersion
-from rule_versioning.storage import RuleStorage
-from rule_versioning.conflict_resolver import RuleConflictResolver, ConflictType, ConflictSeverity
-from rule_versioning.integration import IntegratedRuleManager
+from src.rule_versioning.version_manager import RuleVersionManager, RuleVersion
+from src.rule_versioning.storage import RuleStorage
+from src.rule_versioning.conflict_resolver import RuleConflictResolver, ConflictType, ConflictSeverity
+from src.rule_versioning.integration import IntegratedRuleManager
 
 class TestRuleVersionManager(unittest.TestCase):
     """Test cases for RuleVersionManager"""
@@ -463,10 +463,10 @@ class TestIntegratedRuleManager(unittest.TestCase):
         rule_id = add_result['rule_id']
         
         # Mock the get_rule_by_id method
-        self.integrated_manager.legacy_manager.get_rule_by_id.return_value = {
+        self.integrated_manager.legacy_manager.get_rule_by_id = MagicMock(return_value={
             'id': rule_id,
             **self.sample_rule
-        }
+        })
         
         # Update the rule
         updated_rule = self.sample_rule.copy()
@@ -504,7 +504,7 @@ class TestIntegratedRuleManager(unittest.TestCase):
             }
         ]
         
-        self.integrated_manager.legacy_manager.load_current_rules.return_value = existing_rules
+        self.integrated_manager.legacy_manager.load_current_rules = MagicMock(return_value=existing_rules)
         
         # Perform migration
         migration_results = self.integrated_manager.migrate_existing_rules()
@@ -516,10 +516,10 @@ class TestIntegratedRuleManager(unittest.TestCase):
     def test_system_statistics(self):
         """Test system statistics generation"""
         # Mock legacy statistics
-        self.integrated_manager.legacy_manager.get_rule_statistics.return_value = {
+        self.integrated_manager.legacy_manager.get_rule_statistics = MagicMock(return_value={
             'total_rules': 5,
             'rule_types': {'company': 3, 'unit': 2}
-        }
+        })
         
         stats = self.integrated_manager.get_system_statistics()
         

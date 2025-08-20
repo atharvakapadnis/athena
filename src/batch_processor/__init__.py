@@ -11,16 +11,26 @@ try:
     from .feedback_loop import FeedbackLoopManager, FeedbackItem, FeedbackSummary, RefinementAction
     from .dynamic_scaling_controller import DynamicScalingController
     from .scaling_manager import ScalingConfig
-    from utils.logger import get_logger
+    from ..utils.logger import get_logger
 except ImportError:
     # Fallback for when running as script
-    from batch_processor.batch_manager import BatchManager, BatchConfig, BatchStatus
-    from batch_processor.processor import BatchProcessor, ProcessingResult, BatchResult
-    from batch_processor.progress_tracker import ProgressTracker
-    from batch_processor.feedback_loop import FeedbackLoopManager, FeedbackItem, FeedbackSummary, RefinementAction
-    from batch_processor.dynamic_scaling_controller import DynamicScalingController
-    from batch_processor.scaling_manager import ScalingConfig
-    from utils.logger import get_logger
+    try:
+        from .batch_manager import BatchManager, BatchConfig, BatchStatus
+        from .processor import BatchProcessor, ProcessingResult, BatchResult
+        from .progress_tracker import ProgressTracker
+        from .feedback_loop import FeedbackLoopManager, FeedbackItem, FeedbackSummary, RefinementAction
+        from .dynamic_scaling_controller import DynamicScalingController
+        from .scaling_manager import ScalingConfig
+        from utils.logger import get_logger
+    except ImportError:
+        # Final fallback for pytest
+        from src.batch_processor.batch_manager import BatchManager, BatchConfig, BatchStatus
+        from src.batch_processor.processor import BatchProcessor, ProcessingResult, BatchResult
+        from src.batch_processor.progress_tracker import ProgressTracker
+        from src.batch_processor.feedback_loop import FeedbackLoopManager, FeedbackItem, FeedbackSummary, RefinementAction
+        from src.batch_processor.dynamic_scaling_controller import DynamicScalingController
+        from src.batch_processor.scaling_manager import ScalingConfig
+        from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

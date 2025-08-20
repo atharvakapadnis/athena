@@ -50,7 +50,7 @@ class RuleVersionManager:
     def __init__(self, rules_dir: str = "data/rules"):
         self.rules_dir = Path(rules_dir)
         # Import here to avoid circular imports
-        from rule_versioning.storage import RuleStorage
+        from .storage import RuleStorage
         self.storage = RuleStorage(str(self.rules_dir))
         self.version_history: Dict[str, List[RuleVersion]] = {}
         self._load_version_history()

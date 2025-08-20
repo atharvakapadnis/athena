@@ -273,7 +273,17 @@ class PerformanceIntegrationTester:
         avg_processing_time = statistics.mean(processing_times) if processing_times else 0
         avg_memory_usage = statistics.mean(memory_usages) if memory_usages else 0
         avg_cpu_usage = statistics.mean(cpu_usages) if cpu_usages else 0
-        avg_success_rate = statistics.mean(success_rates) if success_rates else 0
+        # Convert Mock objects to numbers for statistics calculation
+        numeric_success_rates = []
+        for rate in success_rates:
+            if hasattr(rate, '__float__'):
+                numeric_success_rates.append(float(rate))
+            elif isinstance(rate, (int, float)):
+                numeric_success_rates.append(rate)
+            else:
+                numeric_success_rates.append(0.0)
+        
+        avg_success_rate = statistics.mean(numeric_success_rates) if numeric_success_rates else 0
         throughput = (batch_size / avg_processing_time) if avg_processing_time > 0 else 0
         
         metrics = PerformanceMetrics(

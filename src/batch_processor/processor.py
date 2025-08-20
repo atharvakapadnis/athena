@@ -6,8 +6,8 @@ from datetime import datetime
 import time
 
 try:
-    from utils.smart_description_generator import SmartDescriptionGenerator, DescriptionResult
-    from utils.logger import get_logger
+    from ..utils.smart_description_generator import SmartDescriptionGenerator, DescriptionResult
+    from ..utils.logger import get_logger
 except ImportError:
     # Fallback for when running as script
     from utils.smart_description_generator import SmartDescriptionGenerator, DescriptionResult

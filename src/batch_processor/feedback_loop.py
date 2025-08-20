@@ -9,9 +9,9 @@ from pathlib import Path
 from .processor import BatchResult, ProcessingResult
 
 try:
-    from utils.logger import get_logger
-    from rule_editor.manager import RuleManager
-    from rule_editor.workflow import ApprovalWorkflow
+    from ..utils.logger import get_logger
+    from ..rule_editor.manager import RuleManager
+    from ..rule_editor.workflow import ApprovalWorkflow
 except ImportError:
     # Fallback for when running as script
     from utils.logger import get_logger

@@ -7,9 +7,15 @@ import logging
 from typing import Dict, List, Optional
 from pathlib import Path
 
-from rule_versioning.version_manager import RuleVersionManager, RuleVersion
-from rule_versioning.conflict_resolver import RuleConflictResolver
-from rule_editor.manager import RuleManager
+from .version_manager import RuleVersionManager, RuleVersion
+from .conflict_resolver import RuleConflictResolver
+try:
+    from ..rule_editor.manager import RuleManager
+except ImportError:
+    try:
+        from rule_editor.manager import RuleManager
+    except ImportError:
+        from src.rule_editor.manager import RuleManager
 
 logger = logging.getLogger(__name__)
 
