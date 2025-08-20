@@ -66,7 +66,7 @@ class RuleStorage:
         Returns:
             List of RuleVersion objects
         """
-        from rule_versioning.version_manager import RuleVersion  # Import here to avoid circular import
+        from .version_manager import RuleVersion  # Import here to avoid circular import
         
         versions = []
         rule_dir = self.versions_path / rule_id
@@ -129,7 +129,7 @@ class RuleStorage:
         Returns:
             RuleVersion object or None if not found
         """
-        from rule_versioning.version_manager import RuleVersion
+        from .version_manager import RuleVersion
         
         version_file = self.versions_path / rule_id / f"{version_id}.json"
         
@@ -275,7 +275,7 @@ class RuleStorage:
             self._ensure_directories()
             
             # Restore versions
-            from rule_versioning.version_manager import RuleVersion
+            from .version_manager import RuleVersion
             restored_count = 0
             
             for version_data in backup_data.get('versions', []):

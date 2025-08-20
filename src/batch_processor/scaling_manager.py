@@ -8,7 +8,7 @@ from pathlib import Path
 
 try:
     from .processor import BatchResult
-    from utils.logger import get_logger
+    from ..utils.logger import get_logger
 except ImportError:
     # Fallback for when running as script
     from batch_processor.processor import BatchResult

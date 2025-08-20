@@ -6,7 +6,7 @@ import json
 try:
     from .metrics_collector import MetricsCollector
     from .performance_analyzer import PerformanceAnalyzer
-    from utils.logger import get_logger
+    from ..utils.logger import get_logger
 except ImportError:
     # Fallback for when running as script
     from metrics_collector import MetricsCollector

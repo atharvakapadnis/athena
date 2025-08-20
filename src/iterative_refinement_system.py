@@ -17,13 +17,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import all the components
-from batch_processor import BatchProcessingSystem, BatchConfig, FeedbackLoopManager, RefinementAction
-from ai_analysis import AnalysisAggregator, RuleSuggester, PatternAnalyzer
-from rule_editor import RuleManager, ApprovalWorkflow, RuleValidator, RuleImpactAnalyzer
-from confidence_scoring import ConfidenceScoringSystem
-from progress_tracking import QualityMonitor
-from utils.logger import get_logger
-from utils.config import get_project_settings
+from .batch_processor import BatchProcessingSystem, BatchConfig, FeedbackLoopManager, RefinementAction
+from .ai_analysis import AnalysisAggregator, RuleSuggester, PatternAnalyzer
+from .rule_editor import RuleManager, ApprovalWorkflow, RuleValidator, RuleImpactAnalyzer
+from .confidence_scoring import ConfidenceScoringSystem
+from .progress_tracking import QualityMonitor
+from .utils.logger import get_logger
+from .utils.config import get_project_settings
 
 logger = get_logger(__name__)
 

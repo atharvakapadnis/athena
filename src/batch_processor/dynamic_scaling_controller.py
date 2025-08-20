@@ -10,7 +10,7 @@ try:
     from .progress_tracker import ProgressTracker
     from .batch_manager import BatchManager
     from .processor import BatchResult
-    from utils.logger import get_logger
+    from ..utils.logger import get_logger
 except ImportError:
     # Fallback for when running as script
     from batch_processor.scaling_manager import ScalingManager, ScalingConfig, ScalingDecision

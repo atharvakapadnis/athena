@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import math
 
 try:
-    from utils.logger import get_logger
+    from ..utils.logger import get_logger
 except ImportError:
     # Fallback for when running as script
     from utils.logger import get_logger

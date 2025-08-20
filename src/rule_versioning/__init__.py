@@ -11,9 +11,9 @@ Components:
 - RuleConflictResolver: Detects and resolves conflicts between rules
 """
 
-from rule_versioning.version_manager import RuleVersionManager, RuleVersion
-from rule_versioning.storage import RuleStorage
-from rule_versioning.conflict_resolver import RuleConflictResolver
+from .version_manager import RuleVersionManager, RuleVersion
+from .storage import RuleStorage
+from .conflict_resolver import RuleConflictResolver
 
 __all__ = [
     'RuleVersionManager',

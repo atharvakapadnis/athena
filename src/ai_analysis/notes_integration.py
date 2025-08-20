@@ -4,7 +4,7 @@ Integration helpers for AI Notes System with existing components
 """
 
 from typing import Dict, List, Any
-from utils.logger import get_logger
+from ..utils.logger import get_logger
 from .notes_manager import NotesManager
 from .pattern_analyzer import PatternAnalyzer
 from .rule_suggester import RuleSuggester

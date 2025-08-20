@@ -8,8 +8,8 @@ from datetime import datetime
 import uuid
 
 try:
-    from utils.logger import get_logger
-    from utils.config import get_project_settings
+    from ..utils.logger import get_logger
+    from ..utils.config import get_project_settings
 except ImportError:
     # Fallback for when running as script
     from utils.logger import get_logger

@@ -7,7 +7,7 @@ from collections import Counter, defaultdict
 from typing import Dict, List, Tuple, Any
 from datetime import datetime, timedelta
 import re
-from utils.logger import get_logger
+from ..utils.logger import get_logger
 from .notes_manager import NotesManager, AINote, HumanFeedback
 
 logger = get_logger(__name__)
