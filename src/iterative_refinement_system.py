@@ -72,7 +72,7 @@ class IterativeRefinementSystem:
         # Initialize AI analysis components
         # Try to create AI client, use mock if API key not available
         try:
-            from ai_analysis import AIClient
+            from .ai_analysis import AIClient
             ai_client = AIClient()
         except (ValueError, Exception) as e:
             logger.warning(f"Could not initialize AI client: {e}. Using mock client for testing.")
@@ -197,20 +197,27 @@ class IterativeRefinementSystem:
     
     def _run_ai_analysis(self, batch_result, feedback_summary) -> Dict[str, Any]:
         """Run AI analysis on items that need review"""
-        # Get items that need review
-        review_items = [
-            result for result in batch_result.results
-            if result.confidence_level == "Low" or not result.success
-        ]
+        # Get items that need review and convert to dict format
+        review_items = []
+        for result in batch_result.results:
+            if getattr(result, 'confidence_level', 'Unknown') == "Low" or not getattr(result, 'success', True):
+                # Convert ProcessingResult to dict format expected by pattern analyzer
+                review_items.append({
+                    'confidence_level': getattr(result, 'confidence_level', 'Unknown'),
+                    'original_description': getattr(result, 'original_description', ''),
+                    'enhanced_description': getattr(result, 'enhanced_description', ''),
+                    'extracted_features': getattr(result, 'extracted_features', {}),
+                    'success': getattr(result, 'success', True)
+                })
         
         if not review_items:
             return {'patterns_found': False, 'analysis': 'No items need review'}
         
         # Analyze patterns
-        pattern_analysis = self.pattern_analyzer.analyze_failure_patterns(review_items)
+        pattern_analysis = self.pattern_analyzer.analyze_low_confidence_results(review_items)
         
-        # Aggregate analysis
-        analysis_result = self.analysis_aggregator.aggregate_analysis([pattern_analysis])
+        # Aggregate analysis - use the pattern analysis directly since we already have it
+        analysis_result = pattern_analysis
         
         return {
             'patterns_found': True,
