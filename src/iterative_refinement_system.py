@@ -61,11 +61,7 @@ class IterativeRefinementSystem:
         self.approval_workflow = ApprovalWorkflow(self.rule_manager, self.rule_validator)
         
         # Initialize feedback and quality monitoring
-        self.feedback_manager = FeedbackLoopManager(
-            self.data_dir, 
-            self.rule_manager, 
-            self.approval_workflow
-        )
+        self.feedback_manager = FeedbackLoopManager(self.data_dir)
         self.quality_monitor = QualityMonitor(self.data_dir)
         self.rule_analyzer = RuleImpactAnalyzer(self.data_dir)
         

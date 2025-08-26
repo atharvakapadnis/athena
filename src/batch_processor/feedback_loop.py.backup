@@ -10,9 +10,13 @@ from .processor import BatchResult, ProcessingResult
 
 try:
     from ..utils.logger import get_logger
+    from ..rule_editor.manager import RuleManager
+    from ..rule_editor.workflow import ApprovalWorkflow
 except ImportError:
     # Fallback for when running as script
     from utils.logger import get_logger
+    from rule_editor.manager import RuleManager
+    from rule_editor.workflow import ApprovalWorkflow
 
 logger = get_logger(__name__)
 
@@ -57,10 +61,12 @@ class FeedbackSummary:
 class FeedbackLoopManager:
     """Manages the feedback loop for iterative improvement"""
     
-    def __init__(self, data_dir: Path):
-        """Simplified constructor - no rule management dependencies"""
+    def __init__(self, data_dir: Path, rule_manager: RuleManager = None, approval_workflow: ApprovalWorkflow = None):
         self.data_dir = Path(data_dir)
         self.feedback_history: List[FeedbackItem] = []
+        self.rule_changes: List[Dict] = []
+        self.rule_manager = rule_manager
+        self.approval_workflow = approval_workflow
         
         # Ensure feedback directory exists
         self.feedback_dir = self.data_dir / "feedback"
@@ -201,9 +207,65 @@ class FeedbackLoopManager:
         
         return None
     
-    # Note: apply_rule_changes() removed - use RuleManager/ApprovalWorkflow directly
+    def apply_rule_changes(self, new_rules: List[Dict], reviewer: str = "system") -> bool:
+        """Apply approved rule changes to the system"""
+        if not self.rule_manager or not self.approval_workflow:
+            logger.warning("No rule manager or approval workflow configured")
+            return False
+        
+        try:
+            applied_rules = []
+            
+            for rule in new_rules:
+                # Submit for approval workflow
+                approval_id = self.approval_workflow.submit_for_approval(rule)
+                
+                # For now, auto-approve system-generated rules with low risk
+                if self._is_low_risk_rule(rule):
+                    success = self.approval_workflow.approve_rule(
+                        approval_id, 
+                        reviewer, 
+                        "Auto-approved low-risk system rule"
+                    )
+                    
+                    if success:
+                        applied_rules.append(rule)
+                        logger.info(f"Applied rule: {rule.get('name', 'unnamed')}")
+                else:
+                    logger.info(f"Rule submitted for manual approval: {approval_id}")
+            
+            # Track rule changes
+            change_record = {
+                'timestamp': datetime.now().isoformat(),
+                'reviewer': reviewer,
+                'rules_applied': len(applied_rules),
+                'rules_pending': len(new_rules) - len(applied_rules),
+                'rules': applied_rules
+            }
+            
+            self.rule_changes.append(change_record)
+            
+            return len(applied_rules) > 0
+            
+        except Exception as e:
+            logger.error(f"Error applying rule changes: {e}")
+            return False
     
-    # Note: _is_low_risk_rule() removed - logic moved to RuleManager
+    def _is_low_risk_rule(self, rule: Dict) -> bool:
+        """Determine if a rule is low risk and can be auto-approved"""
+        # Simple heuristics for low-risk rules
+        confidence = rule.get('confidence', 0)
+        rule_type = rule.get('type', '')
+        
+        # High confidence, simple improvement rules
+        if confidence > 0.9 and rule_type in ['enhancement', 'feature_extraction']:
+            return True
+        
+        # Rules that only add information, don't change existing
+        if rule.get('action') == 'append' and not rule.get('replaces'):
+            return True
+        
+        return False
     
     def get_feedback_summary(self, days: int = 7) -> Dict[str, Any]:
         """Get feedback summary for recent period"""
@@ -246,7 +308,44 @@ class FeedbackLoopManager:
             )
         }
     
-    # Note: get_improvement_trends() removed - use IterativeRefinementSystem instead
+    def get_improvement_trends(self) -> Dict[str, Any]:
+        """Analyze improvement trends over time"""
+        if len(self.feedback_history) < 20:
+            return {'insufficient_data': True}
+        
+        # Group by batches
+        batch_data = {}
+        for item in self.feedback_history:
+            if item.batch_id not in batch_data:
+                batch_data[item.batch_id] = []
+            batch_data[item.batch_id].append(item)
+        
+        # Calculate trends
+        batch_scores = []
+        batch_dates = []
+        
+        for batch_id, items in batch_data.items():
+            avg_confidence = sum(item.confidence_score for item in items) / len(items)
+            batch_scores.append(avg_confidence)
+            # Use first item's timestamp as batch timestamp
+            batch_dates.append(items[0].timestamp)
+        
+        # Sort by date
+        sorted_data = sorted(zip(batch_dates, batch_scores))
+        
+        if len(sorted_data) >= 3:
+            recent_avg = sum(score for _, score in sorted_data[-3:]) / 3
+            early_avg = sum(score for _, score in sorted_data[:3]) / 3
+            improvement = recent_avg - early_avg
+        else:
+            improvement = 0
+        
+        return {
+            'total_batches': len(batch_data),
+            'improvement_trend': round(improvement, 3),
+            'recent_average_confidence': round(recent_avg if len(sorted_data) >= 3 else 0, 3),
+            'trend_direction': 'improving' if improvement > 0.01 else 'stable' if improvement > -0.01 else 'declining'
+        }
     
     def _save_batch_feedback(self, batch_id: str, feedback_items: List[FeedbackItem], summary: FeedbackSummary):
         """Save batch feedback to file"""
@@ -335,7 +434,7 @@ class FeedbackLoopManager:
                 }
                 for item in self.feedback_history
             ],
-            # 'rule_changes' removed - handled by RuleManager
+            'rule_changes': self.rule_changes,
             'exported_at': datetime.now().isoformat()
         }
         

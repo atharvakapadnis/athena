@@ -6,6 +6,7 @@ from pathlib import Path
 
 try:
     from .scaling_manager import ScalingManager, ScalingConfig, ScalingDecision
+    from .scaling_predictor import ScalingPredictor
     from ..progress_tracking.metrics_collector import MetricsCollector
     from ..progress_tracking.performance_analyzer import PerformanceAnalyzer
     from .batch_manager import BatchManager
@@ -14,6 +15,7 @@ try:
 except ImportError:
     # Fallback for when running as script
     from batch_processor.scaling_manager import ScalingManager, ScalingConfig, ScalingDecision
+    from batch_processor.scaling_predictor import ScalingPredictor
     from progress_tracking.metrics_collector import MetricsCollector
     from progress_tracking.performance_analyzer import PerformanceAnalyzer
     from batch_processor.batch_manager import BatchManager
@@ -46,6 +48,7 @@ class DynamicScalingController:
         self.metrics_collector = metrics_collector
         self.performance_analyzer = PerformanceAnalyzer(metrics_collector)
         self.scaling_manager = ScalingManager(scaling_config, data_dir)
+        self.scaling_predictor = ScalingPredictor()
         
         # Configuration
         self.enabled = True
@@ -98,13 +101,17 @@ class DynamicScalingController:
             # Get scaling decision
             scaling_decision = self.scaling_manager.evaluate_scaling(recent_batch_results)
             
-            # Get comprehensive analysis from enhanced scaling manager
+            # Get prediction analysis
             current_performance = self._build_current_performance_dict(recent_batches)
+            prediction = self.scaling_predictor.get_scaling_recommendation(
+                current_performance, recent_batches
+            )
             
             # Log analysis
             logger.info(f"Scaling analysis - Decision: {scaling_decision.action.value}, "
                        f"Current size: {self.batch_manager.get_current_batch_size()}, "
                        f"Recommended: {scaling_decision.new_batch_size}")
+            logger.info(f"Prediction confidence: {prediction.get('confidence_score', 0.0):.2f}")
             
             # Apply scaling decision
             success = self._apply_scaling_decision(scaling_decision, current_performance)
@@ -139,8 +146,12 @@ class DynamicScalingController:
         recent_batches = self._get_recent_batch_results()
         current_performance = self._build_current_performance_dict(recent_batches)
         
-        # Get comprehensive recommendation from enhanced scaling manager
-        recommendation = self.scaling_manager.get_comprehensive_scaling_recommendation(
+        # Get scaling decision
+        recent_batch_results = self._convert_to_batch_results(recent_batches)
+        scaling_decision = self.scaling_manager.evaluate_scaling(recent_batch_results)
+        
+        # Get prediction analysis
+        prediction = self.scaling_predictor.get_scaling_recommendation(
             current_performance, recent_batches
         )
         
@@ -149,7 +160,13 @@ class DynamicScalingController:
         
         return {
             'current_batch_size': self.batch_manager.get_current_batch_size(),
-            'recommendation': recommendation,
+            'scaling_decision': {
+                'action': scaling_decision.action.value,
+                'new_batch_size': scaling_decision.new_batch_size,
+                'reason': scaling_decision.reason,
+                'confidence_threshold': scaling_decision.confidence_threshold
+            },
+            'prediction': prediction,
             'trend_analysis': trend_analysis,
             'current_performance': current_performance,
             'scaling_active': self.batch_manager.is_dynamic_scaling_active()
