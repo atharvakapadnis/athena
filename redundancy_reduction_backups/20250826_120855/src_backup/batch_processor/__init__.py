@@ -7,8 +7,7 @@ from dataclasses import asdict
 try:
     from .batch_manager import BatchManager, BatchConfig, BatchStatus
     from .processor import BatchProcessor, ProcessingResult, BatchResult
-    from ..progress_tracking.metrics_collector import MetricsCollector
-    from ..progress_tracking.performance_analyzer import PerformanceAnalyzer
+    from .progress_tracker import ProgressTracker
     from .feedback_loop import FeedbackLoopManager, FeedbackItem, FeedbackSummary, RefinementAction
     from .dynamic_scaling_controller import DynamicScalingController
     from .scaling_manager import ScalingConfig
@@ -18,8 +17,7 @@ except ImportError:
     try:
         from .batch_manager import BatchManager, BatchConfig, BatchStatus
         from .processor import BatchProcessor, ProcessingResult, BatchResult
-        from progress_tracking.metrics_collector import MetricsCollector
-        from progress_tracking.performance_analyzer import PerformanceAnalyzer
+        from .progress_tracker import ProgressTracker
         from .feedback_loop import FeedbackLoopManager, FeedbackItem, FeedbackSummary, RefinementAction
         from .dynamic_scaling_controller import DynamicScalingController
         from .scaling_manager import ScalingConfig
@@ -28,8 +26,7 @@ except ImportError:
         # Final fallback for pytest
         from src.batch_processor.batch_manager import BatchManager, BatchConfig, BatchStatus
         from src.batch_processor.processor import BatchProcessor, ProcessingResult, BatchResult
-        from src.progress_tracking.metrics_collector import MetricsCollector
-        from src.progress_tracking.performance_analyzer import PerformanceAnalyzer
+        from src.batch_processor.progress_tracker import ProgressTracker
         from src.batch_processor.feedback_loop import FeedbackLoopManager, FeedbackItem, FeedbackSummary, RefinementAction
         from src.batch_processor.dynamic_scaling_controller import DynamicScalingController
         from src.batch_processor.scaling_manager import ScalingConfig
@@ -45,15 +42,14 @@ class BatchProcessingSystem:
                  scaling_config: Optional[ScalingConfig] = None):
         self.batch_manager = BatchManager(data_loader, settings)
         self.batch_processor = BatchProcessor(description_generator)
-        self.metrics_collector = MetricsCollector(str(Path(settings['data_dir']) / "metrics"))
-        self.performance_analyzer = PerformanceAnalyzer(self.metrics_collector)
+        self.progress_tracker = ProgressTracker(Path(settings['data_dir']))
         self.settings = settings
         
         # Initialize dynamic scaling if enabled
         if enable_dynamic_scaling:
             self.dynamic_scaling_controller = DynamicScalingController(
                 batch_manager=self.batch_manager,
-                metrics_collector=self.metrics_collector,
+                progress_tracker=self.progress_tracker,
                 scaling_config=scaling_config,
                 data_dir=Path(settings['data_dir'])
             )
@@ -103,8 +99,13 @@ class BatchProcessingSystem:
             
             self.batch_manager.update_batch_status(batch_id, status)
             
-            # Update progress tracking - collect metrics from the batch result
-            self.metrics_collector.collect_batch_metrics(batch_result)
+            # Update progress tracking
+            self.progress_tracker.update_progress(batch_id, asdict(status))
+            
+            # Add to history with correct batch_id
+            history_data = batch_result.summary.copy()
+            history_data['batch_id'] = batch_id
+            self.progress_tracker.add_to_history(history_data)
             
             # Trigger dynamic scaling evaluation if enabled
             if self.dynamic_scaling_controller:
@@ -126,14 +127,15 @@ class BatchProcessingSystem:
             
             self.batch_manager.update_batch_status(batch_id, status)
             
-            # Note: Failed batches are not collected as metrics since they don't produce BatchResult objects
+            # Update progress tracking for failed batch
+            self.progress_tracker.update_progress(batch_id, asdict(status))
             
             logger.error(f"Batch {batch_id} failed: {e}")
             raise
     
     def get_progress(self) -> Dict[str, any]:
         """Get overall progress"""
-        return self.performance_analyzer.get_overall_progress()
+        return self.progress_tracker.get_overall_progress()
     
     def list_batches(self) -> List[Dict]:
         """List all batches"""
@@ -141,11 +143,11 @@ class BatchProcessingSystem:
     
     def get_performance_metrics(self):
         """Get performance metrics as DataFrame"""
-        return self.performance_analyzer.get_performance_dataframe()
+        return self.progress_tracker.get_batch_performance_metrics()
     
     def get_recent_performance(self, days: int = 7):
         """Get recent performance trends"""
-        return self.performance_analyzer.get_recent_performance_trend(days)
+        return self.progress_tracker.get_recent_performance_trend(days)
     
     def get_batch_results(self, batch_id: str) -> Optional[BatchResult]:
         """Get detailed results for a specific batch"""
@@ -222,8 +224,7 @@ __all__ = [
     'BatchStatus',
     'BatchManager',
     'BatchProcessor',
-    'MetricsCollector',
-    'PerformanceAnalyzer',
+    'ProgressTracker',
     'ProcessingResult',
     'BatchResult',
     'FeedbackLoopManager',

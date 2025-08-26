@@ -10,8 +10,7 @@ from datetime import datetime
 from src.batch_processor import BatchProcessingSystem, BatchConfig
 from src.batch_processor.processor import BatchProcessor
 from src.batch_processor.batch_manager import BatchManager, BatchStatus
-from src.progress_tracking.metrics_collector import MetricsCollector
-from src.progress_tracking.performance_analyzer import PerformanceAnalyzer
+from src.batch_processor.progress_tracker import ProgressTracker
 from src.utils.smart_description_generator import DescriptionResult
 
 class TestBatchProcessor:
@@ -155,24 +154,22 @@ class TestBatchProcessor:
     def test_progress_tracking(self):
         """Test progress tracking functionality"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            metrics_collector = MetricsCollector(tmpdir)
-            performance_analyzer = PerformanceAnalyzer(metrics_collector)
+            progress_tracker = ProgressTracker(Path(tmpdir))
             
-            # Create a mock batch result object
-            batch_result = Mock()
-            batch_result.batch_id = 'test_batch_1'
-            batch_result.total_items = 10
-            batch_result.successful_items = 8
-            batch_result.failed_items = 2
-            batch_result.confidence_distribution = {'High': 5, 'Medium': 3, 'Low': 2}
-            batch_result.processing_time = 15.5
-            batch_result.results = [Mock(success=True, confidence_score=0.8) for _ in range(8)]
+            # Add some test data
+            batch_result = {
+                'batch_id': 'test_batch_1',
+                'total_items': 10,
+                'successful_items': 8,
+                'failed_items': 2,
+                'confidence_distribution': {'High': 5, 'Medium': 3, 'Low': 2},
+                'processing_time': 15.5
+            }
             
-            # Collect metrics from batch result
-            metrics_collector.collect_batch_metrics(batch_result)
+            progress_tracker.add_to_history(batch_result)
             
             # Get overall progress
-            progress = performance_analyzer.get_overall_progress()
+            progress = progress_tracker.get_overall_progress()
             
             assert progress['total_items_processed'] == 10
             assert progress['successful_items'] == 8
