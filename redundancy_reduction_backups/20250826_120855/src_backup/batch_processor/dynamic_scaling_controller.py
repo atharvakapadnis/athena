@@ -7,8 +7,7 @@ from pathlib import Path
 try:
     from .scaling_manager import ScalingManager, ScalingConfig, ScalingDecision
     from .scaling_predictor import ScalingPredictor
-    from ..progress_tracking.metrics_collector import MetricsCollector
-    from ..progress_tracking.performance_analyzer import PerformanceAnalyzer
+    from .progress_tracker import ProgressTracker
     from .batch_manager import BatchManager
     from .processor import BatchResult
     from ..utils.logger import get_logger
@@ -16,8 +15,7 @@ except ImportError:
     # Fallback for when running as script
     from batch_processor.scaling_manager import ScalingManager, ScalingConfig, ScalingDecision
     from batch_processor.scaling_predictor import ScalingPredictor
-    from progress_tracking.metrics_collector import MetricsCollector
-    from progress_tracking.performance_analyzer import PerformanceAnalyzer
+    from batch_processor.progress_tracker import ProgressTracker
     from batch_processor.batch_manager import BatchManager
     from batch_processor.processor import BatchResult
     from utils.logger import get_logger
@@ -40,13 +38,12 @@ class DynamicScalingController:
     
     def __init__(self, 
                  batch_manager: BatchManager,
-                 metrics_collector: MetricsCollector,
+                 progress_tracker: ProgressTracker,
                  scaling_config: Optional[ScalingConfig] = None,
                  data_dir: Optional[Path] = None):
         
         self.batch_manager = batch_manager
-        self.metrics_collector = metrics_collector
-        self.performance_analyzer = PerformanceAnalyzer(metrics_collector)
+        self.progress_tracker = progress_tracker
         self.scaling_manager = ScalingManager(scaling_config, data_dir)
         self.scaling_predictor = ScalingPredictor()
         
@@ -84,8 +81,7 @@ class DynamicScalingController:
             self.batch_count_since_evaluation = 0
             
             # Check if we have enough data for scaling decisions
-            recent_metrics = self.metrics_collector.get_recent_metrics(3)
-            if len(recent_metrics) < 3:
+            if not self.progress_tracker.should_trigger_scaling_evaluation():
                 logger.debug("Insufficient data for scaling evaluation")
                 return False
             
@@ -156,7 +152,7 @@ class DynamicScalingController:
         )
         
         # Get trend analysis
-        trend_analysis = self.performance_analyzer.get_scaling_trend_analysis()
+        trend_analysis = self.progress_tracker.get_scaling_trend_analysis()
         
         return {
             'current_batch_size': self.batch_manager.get_current_batch_size(),
@@ -215,27 +211,7 @@ class DynamicScalingController:
     
     def _get_recent_batch_results(self, count: int = 5) -> List[Dict]:
         """Get recent batch results for analysis"""
-        recent_metrics = self.metrics_collector.get_recent_metrics(count)
-        
-        # Convert metrics to format expected by scaling system
-        batch_results = []
-        for metrics in recent_metrics:
-            batch_result = {
-                'batch_id': metrics.batch_id,
-                'total_items': metrics.total_items,
-                'successful_items': int(metrics.total_items * metrics.success_rate),
-                'failed_items': metrics.failed_items,
-                'processing_time': metrics.processing_time,
-                'confidence_distribution': {
-                    'High': metrics.high_confidence,
-                    'Medium': metrics.medium_confidence,
-                    'Low': metrics.low_confidence
-                },
-                'success_rate': metrics.success_rate
-            }
-            batch_results.append(batch_result)
-        
-        return batch_results
+        return self.progress_tracker.get_recent_batch_results_for_scaling(count)
     
     def _convert_to_batch_results(self, batch_data: List[Dict]) -> List[BatchResult]:
         """Convert batch data to BatchResult objects for ScalingManager"""
@@ -269,8 +245,8 @@ class DynamicScalingController:
                 'stability_score': 0.0
             }
         
-        # Get performance metrics from performance analyzer
-        performance_metrics = self.performance_analyzer.get_scaling_performance_metrics(len(recent_batches))
+        # Get performance metrics from progress tracker
+        performance_metrics = self.progress_tracker.get_scaling_performance_metrics(len(recent_batches))
         performance_metrics['batch_size'] = self.batch_manager.get_current_batch_size()
         
         return performance_metrics
