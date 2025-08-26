@@ -13,7 +13,7 @@ from .analysis_aggregator import AnalysisAggregator
 from .notes_manager import NotesManager, AINote, HumanFeedback
 from .notes_pattern_analyzer import NotesPatternAnalyzer
 from .notes_exporter import NotesExporter
-from .notes_integration import NotesIntegration
+# NotesIntegration functionality merged into NotesManager
 
 __all__ = [
     'AIClient',
@@ -26,7 +26,7 @@ __all__ = [
     'HumanFeedback',
     'NotesPatternAnalyzer',
     'NotesExporter',
-    'NotesIntegration'
+    # 'NotesIntegration' - merged into NotesManager
 ]
 
 # Version information
