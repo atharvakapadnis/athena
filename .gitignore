@@ -2,6 +2,7 @@ guidelines/
 frontend_guidelines/
 template/
 chats/
+node_modules/
 .env
 *.csv
 *.json
