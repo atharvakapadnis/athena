@@ -66,7 +66,7 @@ async def get_pattern_analysis(
             message=f"Failed to retrieve patterns: {str(e)}",
         )
 
-@router.post("/confidence-analysis", response_mnodel=APIResponse[ConfidenceAnalysisResponse])
+@router.post("/confidence-analysis", response_model=APIResponse[ConfidenceAnalysisResponse])
 async def get_confidence_analysis(
     batch_id: Optional[str] = None,
     days: int = 7,
@@ -90,7 +90,7 @@ async def get_confidence_analysis(
             message=f"Failed to retrieve confidence analysis: {str(e)}",
         )
 
-@router.post("feedback", response_model=APIResponse[FeedbackResponse])
+@router.post("/feedback", response_model=APIResponse[FeedbackResponse])
 async def submit_feedback(
     feedback: FeedbackRequest,
     user: User = Depends(get_current_user),
@@ -135,7 +135,7 @@ async def get_ai_suggestions(
         )
     except Exception as e:
         return APIResponse(
-            staus="error",
+            status="error",
             message=f"Failed to retrieve AI suggestions: {str(e)}",
         )
 

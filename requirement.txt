@@ -1,35 +1,42 @@
-#Core
-fastapi
+# Core
+fastapi>=0.104.0
 scikit-learn
 uvicorn[standard]
-pydantic
+pydantic>=2.0.0
+pydantic-settings
 python-dotenv
 
-#Data processing
+# Data processing
 pandas
 numpy
 
-#AI integration
+# AI integration
 openai
 
-#Config and utilities
+# Config and utilities
 pyyaml
 jsonschema
 
-#Testing
+# Testing
 pytest
 pytest-asyncio
 
-#Logging
+# Logging
 structlog
 
-#Dev tools
+# Dev tools
 black
 flake8
 mypy
 
-#Web and security
+# Web and security
+PyJWT
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
 websockets
+
+# Additional dependencies that might be needed
+python-multipart
+jinja2
+aiofiles

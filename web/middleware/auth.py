@@ -8,7 +8,7 @@ import jwt
 from datetime import datetime, timedelta
 
 from ..config import settings
-from .. models.user import User
+from ..models.user import User
 
 security = HTTPBearer()
 
