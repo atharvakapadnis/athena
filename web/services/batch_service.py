@@ -1,0 +1,545 @@
+from typing import Dict, Any, List, Optional
+from datetime import datetime, timedelta
+import uuid
+import json
+from pathlib import Path
+import asyncio
+import logging
+
+# Import existing Athena components
+from src.batch_processor import BatchProcessingSystem, BatchConfig, BatchManager
+from src.batch_processor.processor import BatchProcessor, BatchResult
+from src.batch_processor.dynamic_scaling_controller import DynamicScalingController
+from src.utils.data_loader import DataLoader
+from src.utils.smart_description_generator import SmartDescriptionGenerator
+from src.utils.config import get_project_settings
+from src.utils.logger import get_logger
+
+from ..models.batch import (
+    BatchConfigRequest, BatchResponse, BatchStatus, 
+    BatchHistoryResponse, ScalingConfigRequest
+)
+
+logger = get_logger(__name__)
+
+class BatchService:
+    """Service layer for batch operations - Full implementation integrating with existing Athena system"""
+    
+    def __init__(self):
+        self.settings = get_project_settings()
+        self.data_dir = Path(self.settings.get('data_dir', 'data'))
+        
+        # Initialize existing Athena components
+        try:
+            # Initialize data loader and description generator
+            self.data_loader = DataLoader()
+            
+            # Try to load HTS data for description generator
+            try:
+                hts_data = self.data_loader.load_hts_reference()
+                from src.utils.hts_hierarchy import HTSHierarchy
+                hts_hierarchy = HTSHierarchy(hts_data)
+                self.description_generator = SmartDescriptionGenerator(hts_hierarchy)
+            except Exception as e:
+                logger.warning(f"Could not initialize HTS hierarchy: {e}. Using fallback generator.")
+                # Create a mock generator for testing
+                self.description_generator = self._create_mock_generator()
+            
+            # Initialize batch processing system
+            self.batch_system = BatchProcessingSystem(
+                self.data_loader,
+                self.description_generator,
+                self.settings
+            )
+            
+            # Initialize batch manager
+            self.batch_manager = self.batch_system.batch_manager
+            
+            # Initialize dynamic scaling if available
+            self.dynamic_scaling = self.batch_system.dynamic_scaling_controller
+            
+            logger.info("BatchService initialized with full Athena integration")
+            
+        except Exception as e:
+            logger.error(f"Error initializing BatchService: {e}")
+            # Fallback initialization
+            self.batch_system = None
+            self.batch_manager = None
+            self.dynamic_scaling = None
+            logger.warning("BatchService initialized in fallback mode")
+    
+    async def start_batch(self, config: BatchConfigRequest, user_id: str) -> BatchResponse:
+        """Start a new batch using the existing batch processing system"""
+        try:
+            if not self.batch_system:
+                raise Exception("Batch system not properly initialized")
+            
+            # Convert web request to Athena BatchConfig
+            batch_config = BatchConfig(
+                batch_size=config.batch_size,
+                start_index=config.start_index,
+                confidence_threshold_high=config.confidence_threshold_high,
+                confidence_threshold_medium=config.confidence_threshold_medium,
+                max_processing_time=config.max_processing_time
+            )
+            
+            # Create batch using existing system
+            batch_id = self.batch_manager.create_batch(batch_config)
+            
+            logger.info(f"Created batch {batch_id} for user {user_id}")
+            
+            # Start batch processing in background
+            asyncio.create_task(self._process_batch_background(batch_id, config))
+            
+            # Return initial batch response
+            return BatchResponse(
+                batch_id=batch_id,
+                status=BatchStatus.RUNNING,
+                batch_size=config.batch_size,
+                items_processed=0,
+                total_items=config.batch_size,
+                progress_percentage=0.0,
+                success_rate=0.0,
+                average_confidence=0.0,
+                created_at=datetime.utcnow(),
+                created_by=user_id
+            )
+            
+        except Exception as e:
+            logger.error(f"Error starting batch: {e}")
+            raise Exception(f"Failed to start batch: {str(e)}")
+    
+    async def get_batch_queue(self) -> List[BatchResponse]:
+        """Get current batch processing queue from existing system"""
+        try:
+            if not self.batch_manager:
+                return []
+            
+            # Get active batches from batch manager
+            active_batches = self.batch_manager.list_batches()
+            queue = []
+            
+            for batch_id in active_batches:
+                batch_info = self.batch_manager.get_batch_status(batch_id)
+                if batch_info and batch_info.get('status') in ['running', 'pending', 'paused']:
+                    batch_response = self._convert_to_batch_response(batch_id, batch_info)
+                    if batch_response:
+                        queue.append(batch_response)
+            
+            return queue
+            
+        except Exception as e:
+            logger.error(f"Error getting batch queue: {e}")
+            return []
+    
+    async def get_batch_history(self, page: int, page_size: int, status_filter: Optional[BatchStatus]) -> Dict:
+        """Get batch history with pagination from existing system"""
+        try:
+            if not self.batch_manager:
+                return self._empty_paginated_response(page, page_size)
+            
+            # Get all batches from batch manager
+            all_batches = self.batch_manager.list_batches()
+            history_items = []
+            
+            for batch_id in all_batches:
+                batch_info = self.batch_manager.get_batch_status(batch_id)
+                if batch_info:
+                    # Filter by status if specified
+                    if status_filter:
+                        batch_status = self._convert_status(batch_info.get('status'))
+                        if batch_status != status_filter:
+                            continue
+                    
+                    history_item = self._convert_to_history_response(batch_id, batch_info)
+                    if history_item:
+                        history_items.append(history_item)
+            
+            # Sort by creation date (most recent first)
+            history_items.sort(key=lambda x: x.created_at, reverse=True)
+            
+            # Apply pagination
+            total = len(history_items)
+            start_idx = (page - 1) * page_size
+            end_idx = start_idx + page_size
+            paginated_items = history_items[start_idx:end_idx]
+            
+            return {
+                'items': [item.dict() for item in paginated_items],
+                'total': total,
+                'page': page,
+                'page_size': page_size,
+                'total_pages': (total + page_size - 1) // page_size,
+                'has_next': end_idx < total,
+                'has_previous': page > 1
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting batch history: {e}")
+            return self._empty_paginated_response(page, page_size)
+    
+    async def get_batch_details(self, batch_id: str) -> Optional[BatchResponse]:
+        """Get detailed batch information from existing system"""
+        try:
+            if not self.batch_manager:
+                return None
+            
+            batch_info = self.batch_manager.get_batch_status(batch_id)
+            if not batch_info:
+                return None
+            
+            return self._convert_to_batch_response(batch_id, batch_info)
+            
+        except Exception as e:
+            logger.error(f"Error getting batch details for {batch_id}: {e}")
+            return None
+    
+    async def pause_batch(self, batch_id: str, user_id: str) -> Dict:
+        """Pause a batch using existing system"""
+        try:
+            if not self.batch_system:
+                raise Exception("Batch system not available")
+            
+            # Use existing batch management functionality
+            success = self.batch_system.pause_batch(batch_id)
+            
+            if success:
+                logger.info(f"Batch {batch_id} paused by user {user_id}")
+                return {'success': True, 'message': f'Batch {batch_id} paused successfully'}
+            else:
+                raise Exception("Failed to pause batch")
+                
+        except Exception as e:
+            logger.error(f"Error pausing batch {batch_id}: {e}")
+            raise Exception(f"Failed to pause batch: {str(e)}")
+    
+    async def resume_batch(self, batch_id: str, user_id: str) -> Dict:
+        """Resume a batch using existing system"""
+        try:
+            if not self.batch_system:
+                raise Exception("Batch system not available")
+            
+            # Use existing batch management functionality
+            success = self.batch_system.resume_batch(batch_id)
+            
+            if success:
+                logger.info(f"Batch {batch_id} resumed by user {user_id}")
+                return {'success': True, 'message': f'Batch {batch_id} resumed successfully'}
+            else:
+                raise Exception("Failed to resume batch")
+                
+        except Exception as e:
+            logger.error(f"Error resuming batch {batch_id}: {e}")
+            raise Exception(f"Failed to resume batch: {str(e)}")
+    
+    async def cancel_batch(self, batch_id: str, user_id: str, reason: Optional[str]) -> Dict:
+        """Cancel a batch using existing system"""
+        try:
+            if not self.batch_system:
+                raise Exception("Batch system not available")
+            
+            # Use existing batch management functionality
+            success = self.batch_system.cancel_batch(batch_id, reason)
+            
+            if success:
+                logger.info(f"Batch {batch_id} cancelled by user {user_id}. Reason: {reason}")
+                return {
+                    'success': True, 
+                    'message': f'Batch {batch_id} cancelled successfully',
+                    'reason': reason
+                }
+            else:
+                raise Exception("Failed to cancel batch")
+                
+        except Exception as e:
+            logger.error(f"Error cancelling batch {batch_id}: {e}")
+            raise Exception(f"Failed to cancel batch: {str(e)}")
+    
+    async def get_scaling_status(self) -> Dict:
+        """Get dynamic scaling status from existing system"""
+        try:
+            if not self.dynamic_scaling:
+                return {
+                    'enabled': False,
+                    'current_batch_size': self.settings.get('batch_size', 50),
+                    'efficiency_score': 0.0,
+                    'efficiency_change': 0.0,
+                    'recommended_batch_size': self.settings.get('batch_size', 50),
+                    'recommendation_confidence': 0.0,
+                    'message': 'Dynamic scaling not available'
+                }
+            
+            # Get scaling status from existing controller
+            status = self.dynamic_scaling.get_scaling_status()
+            
+            if status:
+                return {
+                    'enabled': status.get('enabled', False),
+                    'current_batch_size': status.get('current_batch_size', 50),
+                    'efficiency_score': status.get('efficiency_score', 0.0),
+                    'efficiency_change': status.get('efficiency_change', 0.0),
+                    'recommended_batch_size': status.get('recommended_batch_size', 50),
+                    'recommendation_confidence': status.get('recommendation_confidence', 0.0),
+                    'last_scaling_event': status.get('last_scaling_event'),
+                    'scaling_history': status.get('recent_events', [])
+                }
+            else:
+                return {
+                    'enabled': False,
+                    'current_batch_size': 50,
+                    'efficiency_score': 0.0,
+                    'efficiency_change': 0.0,
+                    'recommended_batch_size': 50,
+                    'recommendation_confidence': 0.0
+                }
+                
+        except Exception as e:
+            logger.error(f"Error getting scaling status: {e}")
+            return {
+                'enabled': False,
+                'current_batch_size': 50,
+                'efficiency_score': 0.0,
+                'efficiency_change': 0.0,
+                'recommended_batch_size': 50,
+                'recommendation_confidence': 0.0,
+                'error': str(e)
+            }
+    
+    async def configure_scaling(self, config: ScalingConfigRequest, user_id: str) -> Dict:
+        """Configure scaling parameters using existing system"""
+        try:
+            if not self.dynamic_scaling:
+                raise Exception("Dynamic scaling not available")
+            
+            # Convert web config to system config
+            scaling_config = {
+                'enabled': config.enabled,
+                'min_batch_size': config.min_batch_size,
+                'max_batch_size': config.max_batch_size,
+                'target_confidence': config.target_confidence,
+                'scaling_factor': config.scaling_factor
+            }
+            
+            # Apply configuration using existing controller
+            success = self.dynamic_scaling.update_configuration(scaling_config)
+            
+            if success:
+                logger.info(f"Scaling configuration updated by user {user_id}: {scaling_config}")
+                return {
+                    'success': True, 
+                    'message': 'Scaling configuration updated successfully',
+                    'configuration': scaling_config
+                }
+            else:
+                raise Exception("Failed to update scaling configuration")
+                
+        except Exception as e:
+            logger.error(f"Error configuring scaling: {e}")
+            raise Exception(f"Failed to configure scaling: {str(e)}")
+    
+    async def enable_scaling(self, user_id: str) -> Dict:
+        """Enable dynamic scaling using existing system"""
+        try:
+            if not self.dynamic_scaling:
+                raise Exception("Dynamic scaling not available")
+            
+            success = self.dynamic_scaling.enable_scaling()
+            
+            if success:
+                logger.info(f"Dynamic scaling enabled by user {user_id}")
+                return {'success': True, 'message': 'Dynamic scaling enabled successfully'}
+            else:
+                raise Exception("Failed to enable scaling")
+                
+        except Exception as e:
+            logger.error(f"Error enabling scaling: {e}")
+            raise Exception(f"Failed to enable scaling: {str(e)}")
+    
+    async def disable_scaling(self, user_id: str) -> Dict:
+        """Disable dynamic scaling using existing system"""
+        try:
+            if not self.dynamic_scaling:
+                raise Exception("Dynamic scaling not available")
+            
+            success = self.dynamic_scaling.disable_scaling()
+            
+            if success:
+                logger.info(f"Dynamic scaling disabled by user {user_id}")
+                return {'success': True, 'message': 'Dynamic scaling disabled successfully'}
+            else:
+                raise Exception("Failed to disable scaling")
+                
+        except Exception as e:
+            logger.error(f"Error disabling scaling: {e}")
+            raise Exception(f"Failed to disable scaling: {str(e)}")
+    
+    async def monitor_batch(self, batch_id: str):
+        """Background task to monitor batch progress using existing system"""
+        try:
+            logger.info(f"Starting background monitoring for batch {batch_id}")
+            
+            # Monitor batch progress
+            while True:
+                if not self.batch_manager:
+                    break
+                
+                batch_info = self.batch_manager.get_batch_status(batch_id)
+                if not batch_info:
+                    logger.warning(f"Batch {batch_id} no longer exists, stopping monitoring")
+                    break
+                
+                status = batch_info.get('status', 'unknown')
+                
+                # Check if batch is complete
+                if status in ['completed', 'failed', 'cancelled']:
+                    logger.info(f"Batch {batch_id} finished with status: {status}")
+                    break
+                
+                # Log progress
+                progress = batch_info.get('progress_percentage', 0)
+                logger.debug(f"Batch {batch_id} progress: {progress}%")
+                
+                # Wait before next check
+                await asyncio.sleep(10)  # Check every 10 seconds
+                
+        except Exception as e:
+            logger.error(f"Error monitoring batch {batch_id}: {e}")
+    
+    # Helper methods
+    async def _process_batch_background(self, batch_id: str, config: BatchConfigRequest):
+        """Process batch in background using existing batch system"""
+        try:
+            if not self.batch_system:
+                logger.error(f"Cannot process batch {batch_id}: batch system not initialized")
+                return
+            
+            logger.info(f"Starting background processing for batch {batch_id}")
+            
+            # Convert config back to BatchConfig for processing
+            batch_config = BatchConfig(
+                batch_size=config.batch_size,
+                start_index=config.start_index,
+                confidence_threshold_high=config.confidence_threshold_high,
+                confidence_threshold_medium=config.confidence_threshold_medium,
+                max_processing_time=config.max_processing_time
+            )
+            
+            # Process the batch using existing system
+            result = self.batch_system.run_batch(batch_config)
+            
+            logger.info(f"Batch {batch_id} processing completed. Result: {result.batch_id}")
+            
+            # Handle notification webhook if provided
+            if config.notification_webhook:
+                await self._send_webhook_notification(config.notification_webhook, batch_id, result)
+                
+        except Exception as e:
+            logger.error(f"Error in background processing for batch {batch_id}: {e}")
+    
+    async def _send_webhook_notification(self, webhook_url: str, batch_id: str, result: BatchResult):
+        """Send webhook notification for batch completion"""
+        try:
+            import aiohttp
+            
+            notification_data = {
+                'batch_id': batch_id,
+                'status': 'completed' if result.successful_items > 0 else 'failed',
+                'total_items': result.total_items,
+                'successful_items': result.successful_items,
+                'failed_items': result.failed_items,
+                'processing_time': result.processing_time,
+                'confidence_distribution': result.confidence_distribution,
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(webhook_url, json=notification_data, timeout=10) as response:
+                    if response.status == 200:
+                        logger.info(f"Webhook notification sent successfully for batch {batch_id}")
+                    else:
+                        logger.warning(f"Webhook notification failed for batch {batch_id}: {response.status}")
+                        
+        except Exception as e:
+            logger.error(f"Error sending webhook notification for batch {batch_id}: {e}")
+    
+    def _convert_to_batch_response(self, batch_id: str, batch_info: Dict) -> Optional[BatchResponse]:
+        """Convert batch info from existing system to BatchResponse"""
+        try:
+            return BatchResponse(
+                batch_id=batch_id,
+                status=self._convert_status(batch_info.get('status', 'unknown')),
+                batch_size=batch_info.get('batch_size', 0),
+                items_processed=batch_info.get('items_processed', 0),
+                total_items=batch_info.get('total_items', 0),
+                progress_percentage=batch_info.get('progress_percentage', 0.0),
+                success_rate=batch_info.get('success_rate', 0.0),
+                average_confidence=batch_info.get('average_confidence', 0.0),
+                processing_duration=batch_info.get('processing_duration'),
+                created_at=datetime.fromisoformat(batch_info.get('created_at', datetime.utcnow().isoformat())),
+                completed_at=datetime.fromisoformat(batch_info['completed_at']) if batch_info.get('completed_at') else None,
+                created_by=batch_info.get('created_by', 'system'),
+                error_message=batch_info.get('error_message')
+            )
+        except Exception as e:
+            logger.error(f"Error converting batch info for {batch_id}: {e}")
+            return None
+    
+    def _convert_to_history_response(self, batch_id: str, batch_info: Dict) -> Optional[BatchHistoryResponse]:
+        """Convert batch info to history response"""
+        try:
+            return BatchHistoryResponse(
+                batch_id=batch_id,
+                status=self._convert_status(batch_info.get('status', 'unknown')),
+                batch_size=batch_info.get('batch_size', 0),
+                items_processed=batch_info.get('items_processed', 0),
+                total_items=batch_info.get('total_items', 0),
+                success_rate=batch_info.get('success_rate', 0.0),
+                average_confidence=batch_info.get('average_confidence', 0.0),
+                created_at=datetime.fromisoformat(batch_info.get('created_at', datetime.utcnow().isoformat())),
+                completed_at=datetime.fromisoformat(batch_info['completed_at']) if batch_info.get('completed_at') else None,
+                processing_duration=batch_info.get('processing_duration')
+            )
+        except Exception as e:
+            logger.error(f"Error converting batch history for {batch_id}: {e}")
+            return None
+    
+    def _convert_status(self, status_str: str) -> BatchStatus:
+        """Convert status string to BatchStatus enum"""
+        status_mapping = {
+            'pending': BatchStatus.PENDING,
+            'running': BatchStatus.RUNNING,
+            'paused': BatchStatus.PAUSED,
+            'completed': BatchStatus.COMPLETED,
+            'failed': BatchStatus.FAILED,
+            'cancelled': BatchStatus.CANCELLED
+        }
+        return status_mapping.get(status_str.lower(), BatchStatus.PENDING)
+    
+    def _empty_paginated_response(self, page: int, page_size: int) -> Dict:
+        """Return empty paginated response"""
+        return {
+            'items': [],
+            'total': 0,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': 0,
+            'has_next': False,
+            'has_previous': False
+        }
+    
+    def _create_mock_generator(self):
+        """Create a mock description generator for testing"""
+        class MockDescriptionGenerator:
+            def generate_description(self, product_data):
+                from src.utils.smart_description_generator import DescriptionResult
+                return DescriptionResult(
+                    original_description=product_data.get('item_description', ''),
+                    enhanced_description=f"Enhanced: {product_data.get('item_description', '')}",
+                    confidence_score=0.8,
+                    confidence_level="High",
+                    extracted_features={},
+                    processing_time=0.1,
+                    success=True
+                )
+        
+        return MockDescriptionGenerator()
