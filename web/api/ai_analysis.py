@@ -4,13 +4,13 @@ import uuid
 from datetime import datetime
 
 from ..services.ai_service import AIService
-from ..model.ai import (
+from ..models.ai import (
     AnalysisRequest, AnalysisResponse, PatternAnalysisResponse,
     FeedbackRequest, FeedbackResponse, ConfidenceAnalysisResponse,
 )
 from ..models.common import APIResponse, PaginatedResponse
 from ..middleware.auth import get_current_user
-from ..models.User import User
+from ..models.user import User
 
 
 router = APIRouter()
