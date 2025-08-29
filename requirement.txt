@@ -1,7 +1,7 @@
 #Core
 fastapi
 scikit-learn
-uvicorn
+uvicorn[standard]
 pydantic
 python-dotenv
 
@@ -27,3 +27,9 @@ structlog
 black
 flake8
 mypy
+
+#Web and security
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+websockets
