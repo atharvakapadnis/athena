@@ -9,7 +9,7 @@ from ..models.batch import(
     BatchHistoryResponse, ScalingConfigRequest
 )
 from ..models.common import APIResponse, PaginatedResponse
-from ..middleware.auth import get_current_user
+from ..middleware.auth import get_mock_user as get_current_user
 from ..models.user import User
 
 router = APIRouter()

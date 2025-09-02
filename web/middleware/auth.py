@@ -63,3 +63,7 @@ def validate_token(token: str) -> User:
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
     """ Get the current user from the token """
     return validate_token(credentials.credentials)
+
+async def get_mock_user() -> User:
+    """ Return a mock user for testing - no authentication required """
+    return User(username="test_user")
