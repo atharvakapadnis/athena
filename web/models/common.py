@@ -29,7 +29,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
     page_size: int = 50
     total_pages: int
     has_next: bool
-    has_prev: bool
+    has_previous: bool
 
 class HealthCheckResponse(BaseModel):
     """ Health check response format """

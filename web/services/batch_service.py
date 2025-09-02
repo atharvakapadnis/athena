@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import asyncio
 import logging
+import json
 
 # Import existing Athena components
 from src.batch_processor import BatchProcessingSystem, BatchConfig, BatchManager
@@ -80,7 +81,9 @@ class BatchService:
                 start_index=config.start_index,
                 confidence_threshold_high=config.confidence_threshold_high,
                 confidence_threshold_medium=config.confidence_threshold_medium,
-                max_processing_time=config.max_processing_time
+                retry_failed_items=config.retry_failed_items,
+                save_intermediate_results=True
+                #max_processing_time=config.max_processing_time
             )
             
             # Create batch using existing system
@@ -147,7 +150,7 @@ class BatchService:
                 if batch_info:
                     # Filter by status if specified
                     if status_filter:
-                        batch_status = self._convert_status(batch_info.get('status'))
+                        batch_status = self._convert_status(batch_info.status)
                         if batch_status != status_filter:
                             continue
                     
@@ -388,7 +391,7 @@ class BatchService:
                     logger.warning(f"Batch {batch_id} no longer exists, stopping monitoring")
                     break
                 
-                status = batch_info.get('status', 'unknown')
+                status = batch_info.status if batch_info else 'unknown'
                 
                 # Check if batch is complete
                 if status in ['completed', 'failed', 'cancelled']:
@@ -407,34 +410,107 @@ class BatchService:
     
     # Helper methods
     async def _process_batch_background(self, batch_id: str, config: BatchConfigRequest):
-        """Process batch in background using existing batch system"""
+        """Process batch in backgrounf using exisiting batch system"""
         try:
             if not self.batch_system:
                 logger.error(f"Cannot process batch {batch_id}: batch system not initialized")
                 return
-            
-            logger.info(f"Starting background processing for batch {batch_id}")
-            
-            # Convert config back to BatchConfig for processing
-            batch_config = BatchConfig(
-                batch_size=config.batch_size,
-                start_index=config.start_index,
-                confidence_threshold_high=config.confidence_threshold_high,
-                confidence_threshold_medium=config.confidence_threshold_medium,
-                max_processing_time=config.max_processing_time
+
+            logger.info(f"Starting background processing for {batch_id}")
+
+            #Load the exisiting batch data that was already created
+            batch_data, batch_metadata = self.batch_manager.load_batch(batch_id)
+
+            #Update the batch status to processing
+            from src.batch_processor.batch_manager import BatchStatus
+            processing_status = BatchStatus(
+                batch_id=batch_id,
+                status='processing',
+                total_items=len(batch_data),
+                processed_items=0,
+                successful_items=0,
+                failed_items=0,
+                high_confidence_count=0,
+                medium_confidence_count=0,
+                low_confidence_count=0,
             )
-            
-            # Process the batch using existing system
-            result = self.batch_system.run_batch(batch_config)
-            
-            logger.info(f"Batch {batch_id} processing completed. Result: {result.batch_id}")
-            
-            # Handle notification webhook if provided
-            if config.notification_webhook:
+
+            self.batch_manager.update_batch_status(batch_id, processing_status)
+
+            # Process the existing batch data using the processor
+            result = self.batch_system.batch_processor.process_batch(batch_data, batch_metadata)
+            logger.info(f"Batch results type: {type(result)}")
+            logger.info(f"Sample result: {result.results[0].__dict__ if result.results else 'No results'}")
+
+            # Update to completed status with results
+            completed_status = BatchStatus(
+                batch_id=batch_id,
+                status='completed',
+                total_items=result.total_items,
+                processed_items=result.total_items,
+                successful_items=result.successful_items,
+                failed_items=result.failed_items,
+                high_confidence_count=result.confidence_distribution.get('High', 0),
+                medium_confidence_count=result.confidence_distribution.get('Medium', 0),
+                low_confidence_count=result.confidence_distribution.get('Low', 0),
+            )
+
+            self.batch_manager.update_batch_status(batch_id, completed_status)
+
+            # Save the enhanced results to a seperate file
+            enhanced_data_file = self.batch_manager.batches_dir / f"{batch_id}_results.json"
+            with open(enhanced_data_file, 'w') as f:
+                # Convert results to a serializable format
+                serializable_results = []
+                for processing_result in result.results:
+                    serializable_results.append({
+                        'item_id': processing_result.item_id,
+                        'original_description': processing_result.original_description,
+                        'enhanced_description': processing_result.enhanced_description,
+                        'confidence_score': processing_result.confidence_score,
+                        'confidence_level': processing_result.confidence_level,
+                        'extracted_features': processing_result.extracted_features,
+                        'processing_time': processing_result.processing_time,
+                        'success': processing_result.success,
+                        'error_message': processing_result.error_message
+                    })
+
+                json.dump({
+                    'batch_id': batch_id,
+                    'total_items': result.total_items,
+                    'successful_items': result.successful_items,
+                    'failed_items': result.failed_items,
+                    'confidence_distribution': result.confidence_distribution,
+                    'results': serializable_results,
+                }, f, indent=2, default=str)
+
+            logger.info(f"Batch {batch_id} processing completed successfully")
+            logger.info(f"Enhanced results saved to: {enhanced_data_file}")
+
+            #Handle notification if webhook is provided
+            if config.notification_webhook and config.notification_webhook != "string":
                 await self._send_webhook_notification(config.notification_webhook, batch_id, result)
-                
+        
         except Exception as e:
             logger.error(f"Error in background processing for batch {batch_id}: {e}")
+            # Mark batch as failed
+            try:
+                from src.batch_processor.batch_manager import BatchStatus
+                failed_status = BatchStatus(
+                    batch_id=batch_id,
+                    status='failed',
+                    total_items=0,
+                    processed_items=0,
+                    successful_items=0,
+                    failed_items=0,
+                    high_confidence_count=0,
+                    medium_confidence_count=0,
+                    low_confidence_count=0,
+                    error_message=str(e)
+                )
+                self.batch_manager.update_batch_status(batch_id, failed_status)
+            except Exception as status_error:
+                logger.error(f"Failed to update batch status: {status_error}")
     
     async def _send_webhook_notification(self, webhook_url: str, batch_id: str, result: BatchResult):
         """Send webhook notification for batch completion"""
