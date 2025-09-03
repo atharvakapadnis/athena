@@ -124,7 +124,7 @@ class BatchService:
             
             for batch_id in active_batches:
                 batch_info = self.batch_manager.get_batch_status(batch_id)
-                if batch_info and batch_info.get('status') in ['running', 'pending', 'paused']:
+                if batch_info and batch_info.status in ['running', 'pending', 'paused']:
                     batch_response = self._convert_to_batch_response(batch_id, batch_info)
                     if batch_response:
                         queue.append(batch_response)
@@ -145,8 +145,10 @@ class BatchService:
             all_batches = self.batch_manager.list_batches()
             history_items = []
             
-            for batch_id in all_batches:
-                batch_info = self.batch_manager.get_batch_status(batch_id)
+            for batch_data in all_batches:
+                batch_id = batch_data['batch_id']
+                batch_info = batch_data['status']
+
                 if batch_info:
                     # Filter by status if specified
                     if status_filter:
@@ -399,7 +401,7 @@ class BatchService:
                     break
                 
                 # Log progress
-                progress = batch_info.get('progress_percentage', 0)
+                progress = getattr(batch_info, 'progress_percentage', 0) if batch_info else 0
                 logger.debug(f"Batch {batch_id} progress: {progress}%")
                 
                 # Wait before next check
@@ -410,7 +412,7 @@ class BatchService:
     
     # Helper methods
     async def _process_batch_background(self, batch_id: str, config: BatchConfigRequest):
-        """Process batch in backgrounf using exisiting batch system"""
+        """Process batch in background using exisiting batch system"""
         try:
             if not self.batch_system:
                 logger.error(f"Cannot process batch {batch_id}: batch system not initialized")
@@ -538,42 +540,94 @@ class BatchService:
         except Exception as e:
             logger.error(f"Error sending webhook notification for batch {batch_id}: {e}")
     
-    def _convert_to_batch_response(self, batch_id: str, batch_info: Dict) -> Optional[BatchResponse]:
+    def _convert_to_batch_response(self, batch_id: str, batch_info) -> Optional[BatchResponse]:
         """Convert batch info from existing system to BatchResponse"""
         try:
+            
+            #Temporary debug logging
+            # logger.info(f"DEBUG - BatchStatus attributes: {dir(batch_info)}")
+            # logger.info(f"DEBUG - batch_size value: {getattr(batch_info, 'batch_size', 'MISSING')}")
+            # logger.info(f"DEBUG - successful_items value: {getattr(batch_info, 'successful_items', 'MISSING')}")
+            # logger.info(f"DEBUG - failed_items value: {getattr(batch_info, 'failed_items', 'MISSING')}")
+
+            #Calculate metrics based off of available metrics
+            total_items = getattr(batch_info, 'total_items', 0)
+            successful_items = getattr(batch_info, 'successful_items', 0)
+            failed_items = getattr(batch_info, 'failed_items', 0)
+
+            #Calculate success rate
+            success_rate = (successful_items / total_items) if total_items > 0 else 0.0
+
+            #Calculate average confidence from confidence distribution
+            high_count = getattr(batch_info, 'high_confidence_count', 0)
+            medium_count = getattr(batch_info, 'medium_confidence_count', 0)
+            low_count = getattr(batch_info, 'low_confidence_count', 0)
+
+            # Average confidence High=0.9, Medium=0.7, Low=0.4
+            total_confidence_items = high_count + medium_count + low_count
+            avg_confidence = 0.0
+            if total_confidence_items > 0:
+                avg_confidence = (high_count * 0.9 + medium_count * 0.7 + low_count * 0.4) / total_confidence_items
+
+            #Calculate processing duration
+            start_time = getattr(batch_info, 'start_time', None)
+            end_time = getattr(batch_info, 'end_time', None)
+            processing_duration = None
+            if start_time and end_time:
+                processing_duration = (end_time - start_time).total_seconds()
+
             return BatchResponse(
                 batch_id=batch_id,
-                status=self._convert_status(batch_info.get('status', 'unknown')),
-                batch_size=batch_info.get('batch_size', 0),
-                items_processed=batch_info.get('items_processed', 0),
-                total_items=batch_info.get('total_items', 0),
-                progress_percentage=batch_info.get('progress_percentage', 0.0),
-                success_rate=batch_info.get('success_rate', 0.0),
-                average_confidence=batch_info.get('average_confidence', 0.0),
-                processing_duration=batch_info.get('processing_duration'),
-                created_at=datetime.fromisoformat(batch_info.get('created_at', datetime.utcnow().isoformat())),
-                completed_at=datetime.fromisoformat(batch_info['completed_at']) if batch_info.get('completed_at') else None,
-                created_by=batch_info.get('created_by', 'system'),
-                error_message=batch_info.get('error_message')
+                status=self._convert_status(batch_info.status),
+                batch_size=total_items,
+                items_processed=getattr(batch_info, 'processed_items', 0),
+                total_items=total_items,
+                progress_percentage=100.0 if batch_info.status == 'completed' else 0.0,
+                success_rate=success_rate,
+                average_confidence=avg_confidence,
+                processing_duration=processing_duration,
+                created_at=datetime.fromisoformat(getattr(batch_info, 'start_time', datetime.utcnow()).isoformat()) if hasattr(getattr(batch_info, 'start_time', None), 'isoformat') else datetime.utcnow(),
+                created_by=getattr(batch_info, 'created_by', 'system'),
+                completed_at=datetime.fromisoformat(getattr(batch_info, 'end_time', None).isoformat()) if getattr(batch_info, 'end_time', None) and hasattr(getattr(batch_info, 'end_time', None), 'isoformat') else None,
+                error_message=getattr(batch_info, 'error_message', None)
             )
         except Exception as e:
             logger.error(f"Error converting batch info for {batch_id}: {e}")
             return None
     
-    def _convert_to_history_response(self, batch_id: str, batch_info: Dict) -> Optional[BatchHistoryResponse]:
+    def _convert_to_history_response(self, batch_id: str, batch_info) -> Optional[BatchHistoryResponse]:
         """Convert batch info to history response"""
         try:
+            total_items = getattr(batch_info, 'total_items', 0)
+            successful_items = getattr(batch_info, 'successful_items', 0)
+            success_rate = (successful_items / total_items) if total_items > 0 else 0.0
+        
+            # Calculate average confidence
+            high_count = getattr(batch_info, 'high_confidence_count', 0)
+            medium_count = getattr(batch_info, 'medium_confidence_count', 0)
+            low_count = getattr(batch_info, 'low_confidence_count', 0)
+            total_confidence_items = high_count + medium_count + low_count
+            avg_confidence = 0.0
+            if total_confidence_items > 0:
+                avg_confidence = (high_count * 0.9 + medium_count * 0.7 + low_count * 0.4) / total_confidence_items
+
+            start_time = getattr(batch_info, 'start_time', None)
+            end_time = getattr(batch_info, 'end_time', None)
+            processing_duration = None
+            if start_time and end_time:
+                processing_duration = (end_time - start_time).total_seconds()
+
             return BatchHistoryResponse(
                 batch_id=batch_id,
-                status=self._convert_status(batch_info.get('status', 'unknown')),
-                batch_size=batch_info.get('batch_size', 0),
-                items_processed=batch_info.get('items_processed', 0),
-                total_items=batch_info.get('total_items', 0),
-                success_rate=batch_info.get('success_rate', 0.0),
-                average_confidence=batch_info.get('average_confidence', 0.0),
-                created_at=datetime.fromisoformat(batch_info.get('created_at', datetime.utcnow().isoformat())),
-                completed_at=datetime.fromisoformat(batch_info['completed_at']) if batch_info.get('completed_at') else None,
-                processing_duration=batch_info.get('processing_duration')
+                status=self._convert_status(batch_info.status),
+                batch_size=total_items,
+                items_processed=getattr(batch_info, 'processed_items', 0),
+                total_items=total_items,
+                success_rate=success_rate,
+                average_confidence=avg_confidence,
+                created_at=datetime.fromisoformat(getattr(batch_info, 'start_time', datetime.utcnow()).isoformat()) if hasattr(getattr(batch_info, 'start_time', None), 'isoformat') else datetime.utcnow(),
+                completed_at=datetime.fromisoformat(getattr(batch_info, 'end_time', None).isoformat()) if getattr(batch_info, 'end_time', None) and hasattr(getattr(batch_info, 'end_time', None), 'isoformat') else None,
+                processing_duration=processing_duration
             )
         except Exception as e:
             logger.error(f"Error converting batch history for {batch_id}: {e}")
