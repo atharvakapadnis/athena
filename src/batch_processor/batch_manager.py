@@ -119,7 +119,33 @@ class BatchManager:
             batch_metadata = json.load(f)
         
         return batch_data, batch_metadata
-    
+
+    def load_batch_results(self, batch_id: str) -> Tuple[List[Dict], Dict]:
+        """Load enhanced batch results instead of the original data for completed batches"""
+        results_file = self.batches_dir / f"{batch_id}_results.json"
+        metadata_file = self.batches_dir / f"{batch_id}_metadata.json"
+
+        if results_file.exists() and metadata_file.exists():
+            #Load enhacned results if available
+            with open(results_file, 'r') as f:
+                results_data = json.load(f)
+
+            with open(metadata_file, 'r') as f:
+                batch_metadata = json.load(f)
+
+            # Extract the enhacned resutlts from the file structure
+            enhanced_results = results_data.get('results', [])
+            return enhanced_results, batch_metadata
+        
+        else:
+            #Fall back to original data if enhacned results don't exist
+            return self.load_batch(batch_id)
+
+    def has_enhanced_results(self, batch_id: str) -> bool:
+        """Check if batch has enhanced results available"""
+        results_file = self.batches_dir / f"{batch_id}_results.json"
+        return results_file.exists()
+
     def update_batch_status(self, batch_id: str, status: BatchStatus):
         """Update batch status"""
         status_file = self.batches_dir / f"{batch_id}_status.json"
