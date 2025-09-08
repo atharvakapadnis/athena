@@ -199,6 +199,51 @@ class BatchService:
             logger.error(f"Error getting batch details for {batch_id}: {e}")
             return None
     
+    async def get_batch_enhanced_results(self, batch_id: str) -> Optional[Dict]:
+        """Get enhanced results for a completed batch"""
+        try:
+            if not self.batch_manager:
+                return None
+
+            # Check if enhanced results exist
+            if not self.batch_manager.has_enhanced_results(batch_id):
+                return None
+
+            enhanced_results, metadata = self.batch_manager.load_batch_results(batch_id)
+
+            return {
+                'batch_id': batch_id,
+                'results': enhanced_results,
+                'metadata': metadata,
+                'total_items': len(enhanced_results),
+                'enhanced': True
+            }
+        
+        except Exception as e:
+            logger.error(f"Error getting enhanced results for {batch_id}: {e}")
+            return None
+
+    async def get_batch_details_with_results(self, batch_id: str) -> Optional[Dict]:
+        """Get batch details including enhanced results if available"""
+        try:
+            #Get basic batch info
+            batch_response = await self.get_batch_details(batch_id)
+            if not batch_response:
+                return None
+
+            #get enhanced results if available
+            enhanced_results = await self.get_batch_enhanced_results(batch_id)
+
+            return {
+                'batch_info': batch_response,
+                'enhanced_results': enhanced_results,
+                'has_enhanced_results': enhanced_results is not None
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting complete batch details for {batch_id}: {e}")
+            return None
+
     async def pause_batch(self, batch_id: str, user_id: str) -> Dict:
         """Pause a batch using existing system"""
         try:
