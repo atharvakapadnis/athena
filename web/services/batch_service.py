@@ -18,7 +18,7 @@ from src.utils.logger import get_logger
 
 from ..models.batch import (
     BatchConfigRequest, BatchResponse, BatchStatus, 
-    BatchHistoryResponse, ScalingConfigRequest
+    BatchHistoryResponse
 )
 
 logger = get_logger(__name__)

@@ -6,7 +6,7 @@ from datetime import datetime
 from ..services.batch_service import BatchService
 from ..models.batch import(
     BatchConfigRequest, BatchResponse, BatchStatus,
-    BatchHistoryResponse, ScalingConfigRequest
+    BatchHistoryResponse
 )
 from ..models.common import APIResponse, PaginatedResponse
 from ..middleware.auth import get_mock_user as get_current_user
