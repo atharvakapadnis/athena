@@ -8,9 +8,7 @@ from src.progress_tracking.metrics_collector import MetricsCollector
 from src.progress_tracking.performance_analyzer import PerformanceAnalyzer
 from src.utils.config import get_project_settings
 
-from ..models.dashboard import(
-    DashboardSummary, ExecutiveSummary, RealTimeMetrics, PerformanceMetrics, QualityMetrics, SystemHealth
-)
+from ..models.dashboard import DashboardSummary
 
 class DashboardService:
     """ Service layer for dashboard operations """
