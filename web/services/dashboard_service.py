@@ -61,69 +61,69 @@ class DashboardService:
 
         return dashboard_summary
     
-    async def get_real_time_metrics(self) -> RealTimeMetrics:
-        """ Get real-time metrics """
-        real_time_data = self.dashboard.get_real_time_metrics()
+    # async def get_real_time_metrics(self) -> RealTimeMetrics:
+    #     """ Get real-time metrics """
+    #     real_time_data = self.dashboard.get_real_time_metrics()
 
-        return RealTimeMetrics(
-            current_batch_status=real_time_data.get('current_metrics', {}),
-            processing_rate=real_time_data.get('recent_averages', {}),
-            confidence__distribution=real_time_data.get('confidence_breakdown', {}),
-            system_health=real_time_data.get('system_health', 'unknown'),
-            active_alerts=real_time_data.get('alerts', 0),
-            timestamp=datetime.utcnow(),
-        )
+    #     return RealTimeMetrics(
+    #         current_batch_status=real_time_data.get('current_metrics', {}),
+    #         processing_rate=real_time_data.get('recent_averages', {}),
+    #         confidence__distribution=real_time_data.get('confidence_breakdown', {}),
+    #         system_health=real_time_data.get('system_health', 'unknown'),
+    #         active_alerts=real_time_data.get('alerts', 0),
+    #         timestamp=datetime.utcnow(),
+    #     )
 
-    async def get_executive_summary(self) -> ExecutiveSummary:
-        """" Get executive summary """
-        cache_key = "executive_summary"
-        if self._is_cache_valid(cache_key):
-            return self._cache[cache_key]['data']
+    # async def get_executive_summary(self) -> ExecutiveSummary:
+    #     """" Get executive summary """
+    #     cache_key = "executive_summary"
+    #     if self._is_cache_valid(cache_key):
+    #         return self._cache[cache_key]['data']
 
-        # Get executive summary from existing dashboard
-        exec_summary = self.dashboard.generate_executive_summary()
+    #     # Get executive summary from existing dashboard
+    #     exec_summary = self.dashboard.generate_executive_summary()
 
-        executive_summary = ExecutiveSummary(
-            key_performance_indicators=exec_summary.get('kpis', {}),
-            quality_trend=exec_summary.get('quality_summary', {}),
-            operational_status=exec_summary.get('operational_status', {}),
-            critical_actions=exec_summary.get('critical_actions', []),
-            performance_highlights=exec_summary.get('performance_highlights', {}),
-            next_review_date=exec_summary.get('next_review_date'), 
-            last_updated=datetime.utcnow(),
-        )
+    #     executive_summary = ExecutiveSummary(
+    #         key_performance_indicators=exec_summary.get('kpis', {}),
+    #         quality_trend=exec_summary.get('quality_summary', {}),
+    #         operational_status=exec_summary.get('operational_status', {}),
+    #         critical_actions=exec_summary.get('critical_actions', []),
+    #         performance_highlights=exec_summary.get('performance_highlights', {}),
+    #         next_review_date=exec_summary.get('next_review_date'), 
+    #         last_updated=datetime.utcnow(),
+    #     )
 
-        # Cache result
-        self._cache[cache_key] = {
-            'data': executive_summary,
-            'timestamp': datetime.utcnow(),
-        }
+    #     # Cache result
+    #     self._cache[cache_key] = {
+    #         'data': executive_summary,
+    #         'timestamp': datetime.utcnow(),
+    #     }
 
-        return executive_summary
+    #     return executive_summary
 
-    async def get_performance_history(self, days: int =30) -> List[Dict]:
-        """ Get performance history """
-        # Use existing performance analyzer
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days = days)
+    # async def get_performance_history(self, days: int =30) -> List[Dict]:
+    #     """ Get performance history """
+    #     # Use existing performance analyzer
+    #     end_date = datetime.now()
+    #     start_date = end_date - timedelta(days = days)
 
-        history = self.performance_analyzer.get_performance_history(
-            start_date=start_date,
-            end_date=end_date
-        )
+    #     history = self.performance_analyzer.get_performance_history(
+    #         start_date=start_date,
+    #         end_date=end_date
+    #     )
 
-        # Format for web API
-        return [
-            {
-                'date': entry.get('date'),
-                'succes_rate': entry.get('success_rate', 0),
-                'confidence_score': entry.get('avg_confidence', 0),
-                'processing_time': entry.get('avg_processing_time', 0),
-                'items_processed': entry.get('total_items', 0),
-                'batch_count': entry.get('batch_count', 0)
-            }
-            for entry in history    
-        ]
+    #     # Format for web API
+    #     return [
+    #         {
+    #             'date': entry.get('date'),
+    #             'succes_rate': entry.get('success_rate', 0),
+    #             'confidence_score': entry.get('avg_confidence', 0),
+    #             'processing_time': entry.get('avg_processing_time', 0),
+    #             'items_processed': entry.get('total_items', 0),
+    #             'batch_count': entry.get('batch_count', 0)
+    #         }
+    #         for entry in history    
+    #     ]
 
     # Helper methods
     def _extract_system_overview(self, summary_report: Dict) -> Dict:
