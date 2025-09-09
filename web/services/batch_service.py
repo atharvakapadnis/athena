@@ -223,26 +223,26 @@ class BatchService:
             logger.error(f"Error getting enhanced results for {batch_id}: {e}")
             return None
 
-    async def get_batch_details_with_results(self, batch_id: str) -> Optional[Dict]:
-        """Get batch details including enhanced results if available"""
-        try:
-            #Get basic batch info
-            batch_response = await self.get_batch_details(batch_id)
-            if not batch_response:
-                return None
+    # async def get_batch_details_with_results(self, batch_id: str) -> Optional[Dict]:
+    #     """Get batch details including enhanced results if available"""
+    #     try:
+    #         #Get basic batch info
+    #         batch_response = await self.get_batch_details(batch_id)
+    #         if not batch_response:
+    #             return None
 
-            #get enhanced results if available
-            enhanced_results = await self.get_batch_enhanced_results(batch_id)
+    #         #get enhanced results if available
+    #         enhanced_results = await self.get_batch_enhanced_results(batch_id)
 
-            return {
-                'batch_info': batch_response,
-                'enhanced_results': enhanced_results,
-                'has_enhanced_results': enhanced_results is not None
-            }
+    #         return {
+    #             'batch_info': batch_response,
+    #             'enhanced_results': enhanced_results,
+    #             'has_enhanced_results': enhanced_results is not None
+    #         }
 
-        except Exception as e:
-            logger.error(f"Error getting complete batch details for {batch_id}: {e}")
-            return None
+    #     except Exception as e:
+    #         logger.error(f"Error getting complete batch details for {batch_id}: {e}")
+    #         return None
 
     async def pause_batch(self, batch_id: str, user_id: str) -> Dict:
         """Pause a batch using existing system"""
@@ -305,123 +305,123 @@ class BatchService:
             logger.error(f"Error cancelling batch {batch_id}: {e}")
             raise Exception(f"Failed to cancel batch: {str(e)}")
     
-    async def get_scaling_status(self) -> Dict:
-        """Get dynamic scaling status from existing system"""
-        try:
-            if not self.dynamic_scaling:
-                return {
-                    'enabled': False,
-                    'current_batch_size': self.settings.get('batch_size', 50),
-                    'efficiency_score': 0.0,
-                    'efficiency_change': 0.0,
-                    'recommended_batch_size': self.settings.get('batch_size', 50),
-                    'recommendation_confidence': 0.0,
-                    'message': 'Dynamic scaling not available'
-                }
+    # async def get_scaling_status(self) -> Dict:
+    #     """Get dynamic scaling status from existing system"""
+    #     try:
+    #         if not self.dynamic_scaling:
+    #             return {
+    #                 'enabled': False,
+    #                 'current_batch_size': self.settings.get('batch_size', 50),
+    #                 'efficiency_score': 0.0,
+    #                 'efficiency_change': 0.0,
+    #                 'recommended_batch_size': self.settings.get('batch_size', 50),
+    #                 'recommendation_confidence': 0.0,
+    #                 'message': 'Dynamic scaling not available'
+    #             }
             
-            # Get scaling status from existing controller
-            status = self.dynamic_scaling.get_scaling_status()
+    #         # Get scaling status from existing controller
+    #         status = self.dynamic_scaling.get_scaling_status()
             
-            if status:
-                return {
-                    'enabled': status.get('enabled', False),
-                    'current_batch_size': status.get('current_batch_size', 50),
-                    'efficiency_score': status.get('efficiency_score', 0.0),
-                    'efficiency_change': status.get('efficiency_change', 0.0),
-                    'recommended_batch_size': status.get('recommended_batch_size', 50),
-                    'recommendation_confidence': status.get('recommendation_confidence', 0.0),
-                    'last_scaling_event': status.get('last_scaling_event'),
-                    'scaling_history': status.get('recent_events', [])
-                }
-            else:
-                return {
-                    'enabled': False,
-                    'current_batch_size': 50,
-                    'efficiency_score': 0.0,
-                    'efficiency_change': 0.0,
-                    'recommended_batch_size': 50,
-                    'recommendation_confidence': 0.0
-                }
+    #         if status:
+    #             return {
+    #                 'enabled': status.get('enabled', False),
+    #                 'current_batch_size': status.get('current_batch_size', 50),
+    #                 'efficiency_score': status.get('efficiency_score', 0.0),
+    #                 'efficiency_change': status.get('efficiency_change', 0.0),
+    #                 'recommended_batch_size': status.get('recommended_batch_size', 50),
+    #                 'recommendation_confidence': status.get('recommendation_confidence', 0.0),
+    #                 'last_scaling_event': status.get('last_scaling_event'),
+    #                 'scaling_history': status.get('recent_events', [])
+    #             }
+    #         else:
+    #             return {
+    #                 'enabled': False,
+    #                 'current_batch_size': 50,
+    #                 'efficiency_score': 0.0,
+    #                 'efficiency_change': 0.0,
+    #                 'recommended_batch_size': 50,
+    #                 'recommendation_confidence': 0.0
+    #             }
                 
-        except Exception as e:
-            logger.error(f"Error getting scaling status: {e}")
-            return {
-                'enabled': False,
-                'current_batch_size': 50,
-                'efficiency_score': 0.0,
-                'efficiency_change': 0.0,
-                'recommended_batch_size': 50,
-                'recommendation_confidence': 0.0,
-                'error': str(e)
-            }
+    #     except Exception as e:
+    #         logger.error(f"Error getting scaling status: {e}")
+    #         return {
+    #             'enabled': False,
+    #             'current_batch_size': 50,
+    #             'efficiency_score': 0.0,
+    #             'efficiency_change': 0.0,
+    #             'recommended_batch_size': 50,
+    #             'recommendation_confidence': 0.0,
+    #             'error': str(e)
+    #         }
     
-    async def configure_scaling(self, config: ScalingConfigRequest, user_id: str) -> Dict:
-        """Configure scaling parameters using existing system"""
-        try:
-            if not self.dynamic_scaling:
-                raise Exception("Dynamic scaling not available")
+    # async def configure_scaling(self, config: ScalingConfigRequest, user_id: str) -> Dict:
+    #     """Configure scaling parameters using existing system"""
+    #     try:
+    #         if not self.dynamic_scaling:
+    #             raise Exception("Dynamic scaling not available")
             
-            # Convert web config to system config
-            scaling_config = {
-                'enabled': config.enabled,
-                'min_batch_size': config.min_batch_size,
-                'max_batch_size': config.max_batch_size,
-                'target_confidence': config.target_confidence,
-                'scaling_factor': config.scaling_factor
-            }
+    #         # Convert web config to system config
+    #         scaling_config = {
+    #             'enabled': config.enabled,
+    #             'min_batch_size': config.min_batch_size,
+    #             'max_batch_size': config.max_batch_size,
+    #             'target_confidence': config.target_confidence,
+    #             'scaling_factor': config.scaling_factor
+    #         }
             
-            # Apply configuration using existing controller
-            success = self.dynamic_scaling.update_configuration(scaling_config)
+    #         # Apply configuration using existing controller
+    #         success = self.dynamic_scaling.update_configuration(scaling_config)
             
-            if success:
-                logger.info(f"Scaling configuration updated by user {user_id}: {scaling_config}")
-                return {
-                    'success': True, 
-                    'message': 'Scaling configuration updated successfully',
-                    'configuration': scaling_config
-                }
-            else:
-                raise Exception("Failed to update scaling configuration")
+    #         if success:
+    #             logger.info(f"Scaling configuration updated by user {user_id}: {scaling_config}")
+    #             return {
+    #                 'success': True, 
+    #                 'message': 'Scaling configuration updated successfully',
+    #                 'configuration': scaling_config
+    #             }
+    #         else:
+    #             raise Exception("Failed to update scaling configuration")
                 
-        except Exception as e:
-            logger.error(f"Error configuring scaling: {e}")
-            raise Exception(f"Failed to configure scaling: {str(e)}")
+    #     except Exception as e:
+    #         logger.error(f"Error configuring scaling: {e}")
+    #         raise Exception(f"Failed to configure scaling: {str(e)}")
     
-    async def enable_scaling(self, user_id: str) -> Dict:
-        """Enable dynamic scaling using existing system"""
-        try:
-            if not self.dynamic_scaling:
-                raise Exception("Dynamic scaling not available")
+    # async def enable_scaling(self, user_id: str) -> Dict:
+    #     """Enable dynamic scaling using existing system"""
+    #     try:
+    #         if not self.dynamic_scaling:
+    #             raise Exception("Dynamic scaling not available")
             
-            success = self.dynamic_scaling.enable_scaling()
+    #         success = self.dynamic_scaling.enable_scaling()
             
-            if success:
-                logger.info(f"Dynamic scaling enabled by user {user_id}")
-                return {'success': True, 'message': 'Dynamic scaling enabled successfully'}
-            else:
-                raise Exception("Failed to enable scaling")
+    #         if success:
+    #             logger.info(f"Dynamic scaling enabled by user {user_id}")
+    #             return {'success': True, 'message': 'Dynamic scaling enabled successfully'}
+    #         else:
+    #             raise Exception("Failed to enable scaling")
                 
-        except Exception as e:
-            logger.error(f"Error enabling scaling: {e}")
-            raise Exception(f"Failed to enable scaling: {str(e)}")
+    #     except Exception as e:
+    #         logger.error(f"Error enabling scaling: {e}")
+    #         raise Exception(f"Failed to enable scaling: {str(e)}")
     
-    async def disable_scaling(self, user_id: str) -> Dict:
-        """Disable dynamic scaling using existing system"""
-        try:
-            if not self.dynamic_scaling:
-                raise Exception("Dynamic scaling not available")
+    # async def disable_scaling(self, user_id: str) -> Dict:
+    #     """Disable dynamic scaling using existing system"""
+    #     try:
+    #         if not self.dynamic_scaling:
+    #             raise Exception("Dynamic scaling not available")
             
-            success = self.dynamic_scaling.disable_scaling()
+    #         success = self.dynamic_scaling.disable_scaling()
             
-            if success:
-                logger.info(f"Dynamic scaling disabled by user {user_id}")
-                return {'success': True, 'message': 'Dynamic scaling disabled successfully'}
-            else:
-                raise Exception("Failed to disable scaling")
+    #         if success:
+    #             logger.info(f"Dynamic scaling disabled by user {user_id}")
+    #             return {'success': True, 'message': 'Dynamic scaling disabled successfully'}
+    #         else:
+    #             raise Exception("Failed to disable scaling")
                 
-        except Exception as e:
-            logger.error(f"Error disabling scaling: {e}")
-            raise Exception(f"Failed to disable scaling: {str(e)}")
+    #     except Exception as e:
+    #         logger.error(f"Error disabling scaling: {e}")
+    #         raise Exception(f"Failed to disable scaling: {str(e)}")
     
     async def monitor_batch(self, batch_id: str):
         """Background task to monitor batch progress using existing system"""

@@ -47,10 +47,3 @@ class BatchHistoryResponse(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
     processing_duration: Optional[float] = None
-
-class ScalingConfigRequest(BaseModel):
-    enabled: bool
-    min_batch_size: int = 10
-    max_batch_size: int = 200
-    target_confidence: float = 0.85
-    scaling_factor: float = 1.2
