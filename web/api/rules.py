@@ -183,49 +183,49 @@ async def deactivate_rule(
             message=f"Failed to deactivate rule: {str(e)}"
         )
 
-@router.get("/{rule_id}/history", response_model=APIResponse[List[Dict]])
-async def get_rule_history(
-    rule_id: str,
-    user: User = Depends(get_current_user),
-    rule_service: RuleService = Depends()
-):
-    """Get version history for a rule"""
-    try:
-        history = await rule_service.get_rule_history(rule_id)
-        return APIResponse(
-            status="success",
-            data=history,
-            message="Rule history retrieved successfully"
-        )
-    except Exception as e:
-        return APIResponse(
-            status="error",
-            message=f"Failed to retrieve rule history: {str(e)}"
-        )
+# @router.get("/{rule_id}/history", response_model=APIResponse[List[Dict]])
+# async def get_rule_history(
+#     rule_id: str,
+#     user: User = Depends(get_current_user),
+#     rule_service: RuleService = Depends()
+# ):
+#     """Get version history for a rule"""
+#     try:
+#         history = await rule_service.get_rule_history(rule_id)
+#         return APIResponse(
+#             status="success",
+#             data=history,
+#             message="Rule history retrieved successfully"
+#         )
+#     except Exception as e:
+#         return APIResponse(
+#             status="error",
+#             message=f"Failed to retrieve rule history: {str(e)}"
+#         )
 
-@router.post("/bulk-action", response_model=APIResponse[Dict])
-async def perform_bulk_action(
-    rule_ids: List[str],
-    action: str,  # activate, deactivate, delete
-    reason: Optional[str] = None,
-    user: User = Depends(get_current_user),
-    rule_service: RuleService = Depends()
-):
-    """Perform bulk action on multiple rules"""
-    try:
-        result = await rule_service.perform_bulk_action(
-            rule_ids=rule_ids,
-            action=action,
-            reason=reason,
-            user=user.username
-        )
-        return APIResponse(
-            status="success",
-            data=result,
-            message=f"Bulk action '{action}' completed successfully"
-        )
-    except Exception as e:
-        return APIResponse(
-            status="error",
-            message=f"Failed to perform bulk action: {str(e)}"
-        )
+# @router.post("/bulk-action", response_model=APIResponse[Dict])
+# async def perform_bulk_action(
+#     rule_ids: List[str],
+#     action: str,  # activate, deactivate, delete
+#     reason: Optional[str] = None,
+#     user: User = Depends(get_current_user),
+#     rule_service: RuleService = Depends()
+# ):
+#     """Perform bulk action on multiple rules"""
+#     try:
+#         result = await rule_service.perform_bulk_action(
+#             rule_ids=rule_ids,
+#             action=action,
+#             reason=reason,
+#             user=user.username
+#         )
+#         return APIResponse(
+#             status="success",
+#             data=result,
+#             message=f"Bulk action '{action}' completed successfully"
+#         )
+#     except Exception as e:
+#         return APIResponse(
+#             status="error",
+#             message=f"Failed to perform bulk action: {str(e)}"
+#         )

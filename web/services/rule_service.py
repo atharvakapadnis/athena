@@ -95,19 +95,19 @@ class RuleService:
         """Deactivate a rule"""
         return {'success': True, 'message': f'Rule {rule_id} deactivated'}
     
-    async def get_rule_history(self, rule_id: str) -> List[Dict]:
-        """Get rule version history"""
-        return []
+    # async def get_rule_history(self, rule_id: str) -> List[Dict]:
+    #     """Get rule version history"""
+    #     return []
     
-    async def perform_bulk_action(
-        self, 
-        rule_ids: List[str], 
-        action: str, 
-        reason: Optional[str], 
-        user: str
-    ) -> Dict:
-        """Perform bulk action on rules"""
-        return {
-            'success': True, 
-            'message': f'Bulk action {action} applied to {len(rule_ids)} rules'
-        }
+    # async def perform_bulk_action(
+    #     self, 
+    #     rule_ids: List[str], 
+    #     action: str, 
+    #     reason: Optional[str], 
+    #     user: str
+    # ) -> Dict:
+    #     """Perform bulk action on rules"""
+    #     return {
+    #         'success': True, 
+    #         'message': f'Bulk action {action} applied to {len(rule_ids)} rules'
+    #     }
