@@ -170,52 +170,52 @@ class AIService:
             message="Feedback submitted and processed successfully"
         )
 
-    async def get_ai_suggestions(self, batch_id: Optional[str], status: Optional[str], confidence_threshold: float) -> List[Dict]:
-        """Get AI suggestions"""
-        if not self.rule_suggester:
-            return []
+    # async def get_ai_suggestions(self, batch_id: Optional[str], status: Optional[str], confidence_threshold: float) -> List[Dict]:
+    #     """Get AI suggestions"""
+    #     if not self.rule_suggester:
+    #         return []
         
-        suggestions = self.rule_suggester.get_suggestions(
-            batch_id=batch_id,
-            status=status,
-            min_confidence=confidence_threshold
-        )
+    #     suggestions = self.rule_suggester.get_suggestions(
+    #         batch_id=batch_id,
+    #         status=status,
+    #         min_confidence=confidence_threshold
+    #     )
         
-        return suggestions
+    #     return suggestions
 
-    async def get_analysis_history(self, page: int, page_size: int, analysis_type: Optional[str]):
-        """Get analysis history"""
-        # Implementation would query analysis history from storage
-        # For now, return mock data structure
-        analyses = []
+    # async def get_analysis_history(self, page: int, page_size: int, analysis_type: Optional[str]):
+    #     """Get analysis history"""
+    #     # Implementation would query analysis history from storage
+    #     # For now, return mock data structure
+    #     analyses = []
         
-        # This would be replaced with actual database/file queries
-        mock_analyses = [
-            {
-                'analysis_id': f'analysis_{i}',
-                'batch_id': f'batch_{i}',
-                'analysis_type': analysis_type or 'patterns',
-                'confidence': 0.85 + (i * 0.02),
-                'created_at': (datetime.utcnow() - timedelta(days=i)).isoformat(),
-                'status': 'completed'
-            }
-            for i in range(10)
-        ]
+    #     # This would be replaced with actual database/file queries
+    #     mock_analyses = [
+    #         {
+    #             'analysis_id': f'analysis_{i}',
+    #             'batch_id': f'batch_{i}',
+    #             'analysis_type': analysis_type or 'patterns',
+    #             'confidence': 0.85 + (i * 0.02),
+    #             'created_at': (datetime.utcnow() - timedelta(days=i)).isoformat(),
+    #             'status': 'completed'
+    #         }
+    #         for i in range(10)
+    #     ]
         
-        # Apply pagination
-        start_idx = (page - 1) * page_size
-        end_idx = start_idx + page_size
-        paginated_analyses = mock_analyses[start_idx:end_idx]
+    #     # Apply pagination
+    #     start_idx = (page - 1) * page_size
+    #     end_idx = start_idx + page_size
+    #     paginated_analyses = mock_analyses[start_idx:end_idx]
         
-        return {
-            'items': paginated_analyses,
-            'total': len(mock_analyses),
-            'page': page,
-            'page_size': page_size,
-            'total_pages': (len(mock_analyses) + page_size - 1) // page_size,
-            'has_next': end_idx < len(mock_analyses),
-            'has_previous': page > 1
-        }
+    #     return {
+    #         'items': paginated_analyses,
+    #         'total': len(mock_analyses),
+    #         'page': page,
+    #         'page_size': page_size,
+    #         'total_pages': (len(mock_analyses) + page_size - 1) // page_size,
+    #         'has_next': end_idx < len(mock_analyses),
+    #         'has_previous': page > 1
+    #     }
 
     # Helper methods
     async def _analyze_patterns(self, batch_id: str) -> Dict:

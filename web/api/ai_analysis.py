@@ -113,54 +113,54 @@ async def submit_feedback(
             message=f"Failed to submit feedback: {str(e)}",
         )
 
-@router.get("/suggestions", response_model=APIResponse[List[Dict]])
-async def get_ai_suggestions(
-    batch_id: Optional[str] = None,
-    status: Optional[str] = None,
-    confidence_threshold: float = 0.7,
-    user: User = Depends(get_current_user),
-    ai_service: AIService = Depends(),
-):
-    """ Get AI-suggestions for improvements """
-    try:
-        suggestions = await ai_service.get_ai_suggestions(
-            batch_id=batch_id,
-            status=status,
-            confidence_threshold=confidence_threshold,
-        )
-        return APIResponse(
-            status="success",
-            data=suggestions,
-            message=f"Retrieved {len(suggestions)} AI suggestions"
-        )
-    except Exception as e:
-        return APIResponse(
-            status="error",
-            message=f"Failed to retrieve AI suggestions: {str(e)}",
-        )
+# @router.get("/suggestions", response_model=APIResponse[List[Dict]])
+# async def get_ai_suggestions(
+#     batch_id: Optional[str] = None,
+#     status: Optional[str] = None,
+#     confidence_threshold: float = 0.7,
+#     user: User = Depends(get_current_user),
+#     ai_service: AIService = Depends(),
+# ):
+#     """ Get AI-suggestions for improvements """
+#     try:
+#         suggestions = await ai_service.get_ai_suggestions(
+#             batch_id=batch_id,
+#             status=status,
+#             confidence_threshold=confidence_threshold,
+#         )
+#         return APIResponse(
+#             status="success",
+#             data=suggestions,
+#             message=f"Retrieved {len(suggestions)} AI suggestions"
+#         )
+#     except Exception as e:
+#         return APIResponse(
+#             status="error",
+#             message=f"Failed to retrieve AI suggestions: {str(e)}",
+#         )
 
-@router.get("/analysis-history", response_model=APIResponse[PaginatedResponse[Dict]])
-async def get_analysis_history(
-    page: int = 1,
-    page_size: int = 20,
-    analysis_type: Optional[str] = None,
-    user: User = Depends(get_current_user),
-    ai_service: AIService = Depends(),
-):
-    """ Get history of AI analysis """
-    try:
-        history = await ai_service.get_analysis_history(
-            page=page,
-            page_size=page_size,
-            analysis_type=analysis_type,
-        )
-        return APIResponse(
-            status="success",
-            data=history,
-            message="Analysis history retrieved successfully",
-        )
-    except Exception as e:
-        return APIResponse(
-            status="error",
-            message=f"Failed to retrieve analysis history: {str(e)}",
-        )
+# @router.get("/analysis-history", response_model=APIResponse[PaginatedResponse[Dict]])
+# async def get_analysis_history(
+#     page: int = 1,
+#     page_size: int = 20,
+#     analysis_type: Optional[str] = None,
+#     user: User = Depends(get_current_user),
+#     ai_service: AIService = Depends(),
+# ):
+#     """ Get history of AI analysis """
+#     try:
+#         history = await ai_service.get_analysis_history(
+#             page=page,
+#             page_size=page_size,
+#             analysis_type=analysis_type,
+#         )
+#         return APIResponse(
+#             status="success",
+#             data=history,
+#             message="Analysis history retrieved successfully",
+#         )
+#     except Exception as e:
+#         return APIResponse(
+#             status="error",
+#             message=f"Failed to retrieve analysis history: {str(e)}",
+#         )
