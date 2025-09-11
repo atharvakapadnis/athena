@@ -7,7 +7,7 @@ import uvicorn
 
 from .middleware.auth import AuthMiddleware
 from .middleware.caching import CacheMiddleware
-from .api import dashboard, batches, rules, ai_analysis, system, websockets, auth
+from .api import dashboard, batches, rules, ai_analysis, system, auth
 from .config import settings, validate_internal_deployment
 from .exceptions import setup_exception_handlers
 
@@ -44,7 +44,6 @@ app.include_router(batches.router, prefix = "/api/batches", tags = ["batches"])
 app.include_router(rules.router, prefix = "/api/rules", tags = ["rules"])
 app.include_router(ai_analysis.router, prefix = "/api/ai", tags = ["ai_analysis"])
 app.include_router(system.router, prefix = "/api/system", tags = ["system"])
-app.include_router(websockets.router, prefix = "/api/ws", tags = ["websockets"])
 app.include_router(auth.router, prefix = "/api/auth", tags = ["authentication"])
 
 # Serve frontend static files

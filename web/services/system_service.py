@@ -11,7 +11,7 @@ from src.utils.config import get_project_settings
 from src.utils.logger import get_logger
 
 from ..models.system import (
-    SystemHealthResponse, SystemStatsResponse, UserResponse, UserRequest
+    SystemHealthResponse, SystemStatsResponse
 )
 
 logger = get_logger(__name__)

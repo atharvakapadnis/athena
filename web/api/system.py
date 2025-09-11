@@ -8,7 +8,7 @@ from pathlib import Path
 from ..services.system_service import SystemService
 from ..models.system import (
     SystemHealthResponse, ConfigurationRequest, ConfigurationResponse,
-    UserRequest, UserResponse, SystemStatsResponse, MaintenanceRequest
+    SystemStatsResponse
 )
 from ..models.common import APIResponse
 from ..middleware.auth import get_current_user
@@ -93,25 +93,25 @@ async def update_system_configuration(
             message=f"Failed to update configuration: {str(e)}"
         )
 
-@router.post("/maintenance", response_model=APIResponse[Dict])
-async def perform_maintenance(
-    maintenance: MaintenanceRequest,
-    user: User = Depends(get_current_user),
-    system_service: SystemService = Depends()
-):
-    """Perform system maintenance tasks"""
-    try:
-        result = await system_service.perform_maintenance(maintenance, user.username)
-        return APIResponse(
-            status="success",
-            data=result,
-            message=f"Maintenance task '{maintenance.task_type}' completed successfully"
-        )
-    except Exception as e:
-        return APIResponse(
-            status="error",
-            message=f"Failed to perform maintenance: {str(e)}"
-        )
+# @router.post("/maintenance", response_model=APIResponse[Dict])
+# async def perform_maintenance(
+#     maintenance: MaintenanceRequest,
+#     user: User = Depends(get_current_user),
+#     system_service: SystemService = Depends()
+# ):
+#     """Perform system maintenance tasks"""
+#     try:
+#         result = await system_service.perform_maintenance(maintenance, user.username)
+#         return APIResponse(
+#             status="success",
+#             data=result,
+#             message=f"Maintenance task '{maintenance.task_type}' completed successfully"
+#         )
+#     except Exception as e:
+#         return APIResponse(
+#             status="error",
+#             message=f"Failed to perform maintenance: {str(e)}"
+#         )
 
 @router.get("/logs", response_model=APIResponse[List[Dict]])
 async def get_system_logs(
@@ -159,41 +159,41 @@ async def create_backup(
             message=f"Failed to create backup: {str(e)}"
         )
 
-@router.get("/users", response_model=APIResponse[List[UserResponse]])
-async def get_users(
-    user: User = Depends(get_current_user),
-    system_service: SystemService = Depends()
-):
-    """Get all system users (basic implementation)"""
-    try:
-        users = await system_service.get_users()
-        return APIResponse(
-            status="success",
-            data=users,
-            message=f"Retrieved {len(users)} users"
-        )
-    except Exception as e:
-        return APIResponse(
-            status="error",
-            message=f"Failed to retrieve users: {str(e)}"
-        )
+# @router.get("/users", response_model=APIResponse[List[UserResponse]])
+# async def get_users(
+#     user: User = Depends(get_current_user),
+#     system_service: SystemService = Depends()
+# ):
+#     """Get all system users (basic implementation)"""
+#     try:
+#         users = await system_service.get_users()
+#         return APIResponse(
+#             status="success",
+#             data=users,
+#             message=f"Retrieved {len(users)} users"
+#         )
+#     except Exception as e:
+#         return APIResponse(
+#             status="error",
+#             message=f"Failed to retrieve users: {str(e)}"
+#         )
 
-@router.post("/users", response_model=APIResponse[UserResponse])
-async def create_user(
-    new_user: UserRequest,
-    user: User = Depends(get_current_user),
-    system_service: SystemService = Depends()
-):
-    """Create a new user (basic implementation)"""
-    try:
-        created_user = await system_service.create_user(new_user, user.username)
-        return APIResponse(
-            status="success",
-            data=created_user,
-            message="User created successfully"
-        )
-    except Exception as e:
-        return APIResponse(
-            status="error",
-            message=f"Failed to create user: {str(e)}"
-        )
+# @router.post("/users", response_model=APIResponse[UserResponse])
+# async def create_user(
+#     new_user: UserRequest,
+#     user: User = Depends(get_current_user),
+#     system_service: SystemService = Depends()
+# ):
+#     """Create a new user (basic implementation)"""
+#     try:
+#         created_user = await system_service.create_user(new_user, user.username)
+#         return APIResponse(
+#             status="success",
+#             data=created_user,
+#             message="User created successfully"
+#         )
+#     except Exception as e:
+#         return APIResponse(
+#             status="error",
+#             message=f"Failed to create user: {str(e)}"
+#         )
