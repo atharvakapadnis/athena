@@ -191,35 +191,35 @@ class SystemService:
             logger.error(f"Error updating configuration: {e}")
             raise
 
-    async def perform_maintenance(self, maintenance_request, user_id: str) -> Dict[str, Any]:
-        """Perform system maintenance tasks"""
-        try:
-            task_type = maintenance_request.task_type
-            results = {}
+    # async def perform_maintenance(self, maintenance_request, user_id: str) -> Dict[str, Any]:
+    #     """Perform system maintenance tasks"""
+    #     try:
+    #         task_type = maintenance_request.task_type
+    #         results = {}
 
-            if task_type == "cleanup":
-                results = await self._cleanup_system()
-            elif task_type == "optimize":
-                results = await self._optimize_system()
-            elif task_type == "check_integrity":
-                results = await self._check_data_integrity()
-            elif task_type == "update_dependencies":
-                results = await self._update_dependencies()
-            else:
-                raise ValueError(f"Unknown maintenance task: {task_type}")
+    #         if task_type == "cleanup":
+    #             results = await self._cleanup_system()
+    #         elif task_type == "optimize":
+    #             results = await self._optimize_system()
+    #         elif task_type == "check_integrity":
+    #             results = await self._check_data_integrity()
+    #         elif task_type == "update_dependencies":
+    #             results = await self._update_dependencies()
+    #         else:
+    #             raise ValueError(f"Unknown maintenance task: {task_type}")
 
-            logger.info(f"Maintenance task '{task_type}' completed by {user_id}")
+    #         logger.info(f"Maintenance task '{task_type}' completed by {user_id}")
 
-            return {
-                'task_type': task_type,
-                'completed_at': datetime.utcnow().isoformat(),
-                'completed_by': user_id,
-                'results': results
-            }
+    #         return {
+    #             'task_type': task_type,
+    #             'completed_at': datetime.utcnow().isoformat(),
+    #             'completed_by': user_id,
+    #             'results': results
+    #         }
 
-        except Exception as e:
-            logger.error(f"Error performing maintenance: {e}")
-            raise
+    #     except Exception as e:
+    #         logger.error(f"Error performing maintenance: {e}")
+    #         raise
 
     async def get_logs(self, level: Optional[str], component: Optional[str], limit: int) -> List[Dict]:
         """Get system logs"""
@@ -293,65 +293,65 @@ class SystemService:
             logger.error(f"Error creating backup: {e}")
             raise
 
-    async def get_users(self) -> List[UserResponse]:
-        """Get all system users"""
-        try:
-            if not self.users_file.exists():
-                default_users = [
-                    {
-                        'username': 'admin',
-                        'email': 'admin@company.local',
-                        'role': 'admin',
-                        'active': True,
-                        'created_at': datetime.utcnow().isoformat(),
-                        'last_login': None
-                    }
-                ]
+    # async def get_users(self) -> List[UserResponse]:
+    #     """Get all system users"""
+    #     try:
+    #         if not self.users_file.exists():
+    #             default_users = [
+    #                 {
+    #                     'username': 'admin',
+    #                     'email': 'admin@company.local',
+    #                     'role': 'admin',
+    #                     'active': True,
+    #                     'created_at': datetime.utcnow().isoformat(),
+    #                     'last_login': None
+    #                 }
+    #             ]
 
-                with open(self.users_file, 'w') as f:
-                    json.dump(default_users, f, indent=2)
+    #             with open(self.users_file, 'w') as f:
+    #                 json.dump(default_users, f, indent=2)
 
-                return [UserResponse(**user) for user in default_users]
+    #             return [UserResponse(**user) for user in default_users]
 
-            with open(self.users_file, 'r') as f:
-                users_data = json.load(f)
+    #         with open(self.users_file, 'r') as f:
+    #             users_data = json.load(f)
 
-            return [UserResponse(**user) for user in users_data]
+    #         return [UserResponse(**user) for user in users_data]
 
-        except Exception as e:
-            logger.error(f"Error getting users: {e}")
-            raise
+    #     except Exception as e:
+    #         logger.error(f"Error getting users: {e}")
+    #         raise
 
-    async def create_user(self, user_request: UserRequest, creator_id: str) -> UserResponse:
-        """Create a new user"""
-        try:
-            users = await self.get_users()
+    # async def create_user(self, user_request: UserRequest, creator_id: str) -> UserResponse:
+    #     """Create a new user"""
+    #     try:
+    #         users = await self.get_users()
 
-            if any(user.username == user_request.username for user in users):
-                raise ValueError(f"User {user_request.username} already exists")
+    #         if any(user.username == user_request.username for user in users):
+    #             raise ValueError(f"User {user_request.username} already exists")
 
-            new_user = UserResponse(
-                username=user_request.username,
-                email=user_request.email,
-                role=user_request.role,
-                active=True,
-                created_at=datetime.utcnow(),
-                last_login=None
-            )
+    #         new_user = UserResponse(
+    #             username=user_request.username,
+    #             email=user_request.email,
+    #             role=user_request.role,
+    #             active=True,
+    #             created_at=datetime.utcnow(),
+    #             last_login=None
+    #         )
 
-            users_data = [user.dict() for user in users]
-            users_data.append(new_user.dict())
+    #         users_data = [user.dict() for user in users]
+    #         users_data.append(new_user.dict())
 
-            with open(self.users_file, 'w') as f:
-                json.dump(users_data, f, indent=2, default=str)
+    #         with open(self.users_file, 'w') as f:
+    #             json.dump(users_data, f, indent=2, default=str)
 
-            logger.info(f"User {user_request.username} created by {creator_id}")
+    #         logger.info(f"User {user_request.username} created by {creator_id}")
 
-            return new_user
+    #         return new_user
 
-        except Exception as e:
-            logger.error(f"Error creating user: {e}")
-            raise
+    #     except Exception as e:
+    #         logger.error(f"Error creating user: {e}")
+    #         raise
 
     # ---------------------------
     # Helper methods
@@ -432,105 +432,105 @@ class SystemService:
             logger.error(f"Error getting recent activity stats: {e}")
             return {'error': str(e)}
 
-    async def _cleanup_system(self) -> Dict[str, Any]:
-        try:
-            results = {'files_removed': 0, 'space_freed_mb': 0, 'actions': []}
-            temp_dirs = [Path('temp'), Path('.cache'), self.data_dir / 'temp']
+    # async def _cleanup_system(self) -> Dict[str, Any]:
+    #     try:
+    #         results = {'files_removed': 0, 'space_freed_mb': 0, 'actions': []}
+    #         temp_dirs = [Path('temp'), Path('.cache'), self.data_dir / 'temp']
 
-            for temp_dir in temp_dirs:
-                if temp_dir.exists():
-                    size_before = sum(f.stat().st_size for f in temp_dir.rglob('*') if f.is_file())
-                    shutil.rmtree(temp_dir)
-                    temp_dir.mkdir(exist_ok=True)
-                    results['space_freed_mb'] += size_before / 1024 / 1024
-                    results['actions'].append(f"Cleaned {temp_dir}")
+    #         for temp_dir in temp_dirs:
+    #             if temp_dir.exists():
+    #                 size_before = sum(f.stat().st_size for f in temp_dir.rglob('*') if f.is_file())
+    #                 shutil.rmtree(temp_dir)
+    #                 temp_dir.mkdir(exist_ok=True)
+    #                 results['space_freed_mb'] += size_before / 1024 / 1024
+    #                 results['actions'].append(f"Cleaned {temp_dir}")
 
-            log_dir = Path('logs')
-            if log_dir.exists():
-                cutoff_date = datetime.now() - timedelta(days=30)
-                for log_file in log_dir.glob('*.log'):
-                    if datetime.fromtimestamp(log_file.stat().st_mtime) < cutoff_date:
-                        size = log_file.stat().st_size
-                        log_file.unlink()
-                        results['files_removed'] += 1
-                        results['space_freed_mb'] += size / 1024 / 1024
-                        results['actions'].append(f"Removed old log: {log_file.name}")
+    #         log_dir = Path('logs')
+    #         if log_dir.exists():
+    #             cutoff_date = datetime.now() - timedelta(days=30)
+    #             for log_file in log_dir.glob('*.log'):
+    #                 if datetime.fromtimestamp(log_file.stat().st_mtime) < cutoff_date:
+    #                     size = log_file.stat().st_size
+    #                     log_file.unlink()
+    #                     results['files_removed'] += 1
+    #                     results['space_freed_mb'] += size / 1024 / 1024
+    #                     results['actions'].append(f"Removed old log: {log_file.name}")
 
-            results['space_freed_mb'] = round(results['space_freed_mb'], 2)
-            return results
+    #         results['space_freed_mb'] = round(results['space_freed_mb'], 2)
+    #         return results
 
-        except Exception as e:
-            logger.error(f"Error during cleanup: {e}")
-            return {'error': str(e)}
+    #     except Exception as e:
+    #         logger.error(f"Error during cleanup: {e}")
+    #         return {'error': str(e)}
 
-    async def _optimize_system(self) -> Dict[str, Any]:
-        try:
-            results = {'optimizations': [], 'performance_improvement': 'estimated'}
+    # async def _optimize_system(self) -> Dict[str, Any]:
+    #     try:
+    #         results = {'optimizations': [], 'performance_improvement': 'estimated'}
 
-            if (self.data_dir / 'metrics').exists():
-                results['optimizations'].append("Optimized metrics data structure")
+    #         if (self.data_dir / 'metrics').exists():
+    #             results['optimizations'].append("Optimized metrics data structure")
 
-            if (self.data_dir / 'batches').exists():
-                results['optimizations'].append("Consolidated batch history files")
+    #         if (self.data_dir / 'batches').exists():
+    #             results['optimizations'].append("Consolidated batch history files")
 
-            cache_dirs = [Path('.cache'), self.data_dir / 'cache']
-            for cache_dir in cache_dirs:
-                if cache_dir.exists():
-                    shutil.rmtree(cache_dir)
-                    cache_dir.mkdir(exist_ok=True)
-                    results['optimizations'].append(f"Cleared cache: {cache_dir}")
+    #         cache_dirs = [Path('.cache'), self.data_dir / 'cache']
+    #         for cache_dir in cache_dirs:
+    #             if cache_dir.exists():
+    #                 shutil.rmtree(cache_dir)
+    #                 cache_dir.mkdir(exist_ok=True)
+    #                 results['optimizations'].append(f"Cleared cache: {cache_dir}")
 
-            return results
+    #         return results
 
-        except Exception as e:
-            logger.error(f"Error during optimization: {e}")
-            return {'error': str(e)}
+    #     except Exception as e:
+    #         logger.error(f"Error during optimization: {e}")
+    #         return {'error': str(e)}
 
-    async def _check_data_integrity(self) -> Dict[str, Any]:
-        try:
-            results = {'checks_performed': 0, 'issues_found': 0, 'issues': [], 'status': 'healthy'}
-            json_files = list(self.data_dir.rglob('*.json'))
+    # async def _check_data_integrity(self) -> Dict[str, Any]:
+    #     try:
+    #         results = {'checks_performed': 0, 'issues_found': 0, 'issues': [], 'status': 'healthy'}
+    #         json_files = list(self.data_dir.rglob('*.json'))
 
-            for json_file in json_files:
-                results['checks_performed'] += 1
-                try:
-                    with open(json_file, 'r') as f:
-                        json.load(f)
-                except json.JSONDecodeError as e:
-                    results['issues_found'] += 1
-                    results['issues'].append(f"Invalid JSON in {json_file}: {str(e)}")
+    #         for json_file in json_files:
+    #             results['checks_performed'] += 1
+    #             try:
+    #                 with open(json_file, 'r') as f:
+    #                     json.load(f)
+    #             except json.JSONDecodeError as e:
+    #                 results['issues_found'] += 1
+    #                 results['issues'].append(f"Invalid JSON in {json_file}: {str(e)}")
 
-            required_dirs = ['batches', 'rules', 'metrics', 'feedback']
-            for dir_name in required_dirs:
-                dir_path = self.data_dir / dir_name
-                if not dir_path.exists():
-                    results['issues_found'] += 1
-                    results['issues'].append(f"Missing directory: {dir_path}")
-                    dir_path.mkdir(exist_ok=True)
+    #         required_dirs = ['batches', 'rules', 'metrics', 'feedback']
+    #         for dir_name in required_dirs:
+    #             dir_path = self.data_dir / dir_name
+    #             if not dir_path.exists():
+    #                 results['issues_found'] += 1
+    #                 results['issues'].append(f"Missing directory: {dir_path}")
+    #                 dir_path.mkdir(exist_ok=True)
 
-            if results['issues_found'] > 0:
-                results['status'] = 'issues_found'
+    #         if results['issues_found'] > 0:
+    #             results['status'] = 'issues_found'
 
-            return results
+    #         return results
 
-        except Exception as e:
-            logger.error(f"Error during integrity check: {e}")
-            return {'error': str(e)}
+    #     except Exception as e:
+    #         logger.error(f"Error during integrity check: {e}")
+    #         return {'error': str(e)}
 
-    async def _update_dependencies(self) -> Dict[str, Any]:
-        try:
-            results = {'status': 'completed', 'actions': [], 'recommendations': []}
+    # async def _update_dependencies(self) -> Dict[str, Any]:
+    #     try:
+    #         results = {'status': 'completed', 'actions': [], 'recommendations': []}
 
-            if Path('requirements.txt').exists():
-                results['actions'].append("Checked Python dependencies")
-                results['recommendations'].append("Consider running 'pip install -r requirements.txt --upgrade'")
+    #         if Path('requirements.txt').exists():
+    #             results['actions'].append("Checked Python dependencies")
+    #             results['recommendations'].append("Consider running 'pip install -r requirements.txt --upgrade'")
 
-            if Path('frontend/package.json').exists():
-                results['actions'].append("Checked frontend dependencies")
-                results['recommendations'].append("Consider running 'npm audit fix' in frontend directory")
+    #         if Path('frontend/package.json').exists():
+    #             results['actions'].append("Checked frontend dependencies")
+    #             results['recommendations'].append("Consider running 'npm audit fix' in frontend directory")
 
-            return results
+    #         return results
 
-        except Exception as e:
-            logger.error(f"Error updating dependencies: {e}")
-            return {'error': str(e)}
+    #     except Exception as e:
+    #         logger.error(f"Error updating dependencies: {e}")
+    #         return {'error': str(e)}

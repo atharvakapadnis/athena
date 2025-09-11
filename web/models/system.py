@@ -29,19 +29,19 @@ class ConfigurationResponse(BaseModel):
     last_updated: datetime
     updated_by: str
 
-class UserRequest(BaseModel):
-    username: str
-    email: str
-    role: str
+# class UserRequest(BaseModel):
+#     username: str
+#     email: str
+#     role: str
 
-class UserResponse(BaseModel):
-    username: str
-    email: str
-    role: str
-    active: bool
-    created_at: datetime
-    last_login: Optional[datetime] = None
+# class UserResponse(BaseModel):
+#     username: str
+#     email: str
+#     role: str
+#     active: bool
+#     created_at: datetime
+#     last_login: Optional[datetime] = None
 
-class MaintenanceRequest(BaseModel):
-    task_type: str
-    parameters: Optional[Dict[str, Any]] = None
+# class MaintenanceRequest(BaseModel):
+#     task_type: str
+#     parameters: Optional[Dict[str, Any]] = None
