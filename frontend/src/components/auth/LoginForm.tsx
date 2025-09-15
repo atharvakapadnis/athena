@@ -25,7 +25,7 @@ export function LoginForm() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const from = location.state?.from?.pathname || '/dasahboard';
+    const from = location.state?.from?.pathname || '/dashboard';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
