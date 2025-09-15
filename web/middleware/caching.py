@@ -85,12 +85,43 @@ class CacheMiddleware(BaseHTTPMiddleware):
         
         return cached
 
+    # async def _cache_response(self, cache_key: str, response: Response):
+    #     """Cache response"""
+    #     # Read response body
+    #     response_body = b""
+    #     async for chunk in response.body_iterator:
+    #         response_body += chunk
+        
+    #     # Store in cache
+    #     self.cache[cache_key] = {
+    #         'content': response_body,
+    #         'status_code': response.status_code,
+    #         'headers': dict(response.headers),
+    #         'timestamp': time.time()
+    #     }
+        
+    #     # Recreate response with same body
+    #     response.body_iterator = iter([response_body])
+        
+    #     # Clean old cache entries periodically
+    #     if len(self.cache) > 1000:  # Limit cache size for internal deployment
+    #         self._cleanup_cache()
     async def _cache_response(self, cache_key: str, response: Response):
         """Cache response"""
-        # Read response body
+        # Read response body properly
         response_body = b""
-        async for chunk in response.body_iterator:
-            response_body += chunk
+        
+        # Handle different types of body iterators
+        if hasattr(response, 'body'):
+            response_body = response.body
+        elif hasattr(response.body_iterator, '__aiter__'):
+            # Async iterator
+            async for chunk in response.body_iterator:
+                response_body += chunk
+        else:
+            # Regular iterator - convert to async
+            for chunk in response.body_iterator:
+                response_body += chunk
         
         # Store in cache
         self.cache[cache_key] = {
@@ -100,8 +131,11 @@ class CacheMiddleware(BaseHTTPMiddleware):
             'timestamp': time.time()
         }
         
-        # Recreate response with same body
-        response.body_iterator = iter([response_body])
+        # Recreate response with same body - create proper async iterator
+        async def body_iter():
+            yield response_body
+        
+        response.body_iterator = body_iter()
         
         # Clean old cache entries periodically
         if len(self.cache) > 1000:  # Limit cache size for internal deployment

@@ -1,11 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { Typography, Grid, Box, Button } from '@mui/material';
+import { Typography, Grid, Box, Button, Card, CardContent, Alert } from '@mui/material';
 import { Refresh } from '@mui/icons-material';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { dashboardService } from '@/services/api';
 import { QUERY_KEYS } from '@/constants';
-import { SystemOverviewCard } from '@/components/dashboard/SystemOverview';
-import { PerformanceMetricsCard } from '@/components/dashboard/PerformanceMetrics';
 
 export function DashboardPage() {
   usePageTitle('Dashboard');
@@ -43,51 +41,49 @@ export function DashboardPage() {
       </Box>
 
       {isLoading && !dashboardData && (
-        <Typography>Loading dashboard data...</Typography>
+        <Card>
+          <CardContent>
+            <Typography>Loading dashboard data...</Typography>
+          </CardContent>
+        </Card>
       )}
 
       {error && (
-        <Typography color="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
           Error loading dashboard: {(error as any)?.message || 'Unknown error'}
-        </Typography>
+        </Alert>
       )}
 
       {dashboardData && (
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, md: 6 }}>
-            <SystemOverviewCard
-              data={dashboardData.system_overview}
-              isLoading={isLoading}
-              error={error ? (error as any)?.message : null}
-            />
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  System Overview
+                </Typography>
+                <Typography variant="body1">
+                  Dashboard data loaded successfully!
+                </Typography>
+                <pre style={{ fontSize: '12px', marginTop: '10px' }}>
+                  {JSON.stringify(dashboardData, null, 2)}
+                </pre>
+              </CardContent>
+            </Card>
           </Grid>
           
           <Grid size={{ xs: 12, md: 6 }}>
-            <PerformanceMetricsCard
-              data={dashboardData.performance_metrics}
-              isLoading={isLoading}
-              error={error ? (error as any)?.message : null}
-            />
-          </Grid>
-
-          <Grid size={{ xs: 12 }}>
-            <Typography variant="h6">
-              Last Updated: {dashboardData.last_updated ? new Date(dashboardData.last_updated).toLocaleString() : 'Unknown'}
-            </Typography>
-          </Grid>
-
-          {dashboardData.recommendations && dashboardData.recommendations.length > 0 && (
-            <Grid size={{ xs: 12 }}>
-              <Typography variant="h6" gutterBottom>
-                Recommendations
-              </Typography>
-              {dashboardData.recommendations.map((recommendation, index) => (
-                <Typography key={index} variant="body2" sx={{ mb: 1 }}>
-                  • {recommendation}
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  System Status
                 </Typography>
-              ))}
-            </Grid>
-          )}
+                <Typography variant="body2" color="text.secondary">
+                  Last Updated: {dashboardData.last_updated ? new Date(dashboardData.last_updated).toLocaleString() : 'Unknown'}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
       )}
     </Box>
