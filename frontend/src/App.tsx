@@ -7,6 +7,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { DashboardPage } from '@/pages/DashboardPage';
+import { BatchesPage } from '@/pages/BatchesPage';
 import { ROUTES } from '@/constants';
 
 // Create a new MUI theme
@@ -60,13 +61,13 @@ function App(){
                 }
               />
               
-              {/* Placeholder routes for other pages */}
+              
               <Route
                 path={ROUTES.BATCHES}
                 element={
                   <ProtectedRoute>
                     <AppLayout>
-                      <div>Batch Management - Coming Soon</div>
+                      <BatchesPage />
                     </AppLayout>
                   </ProtectedRoute>
                 }
