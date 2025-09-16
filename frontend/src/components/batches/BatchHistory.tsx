@@ -1,199 +1,123 @@
-import { useState } from 'react';
-import {
-    Card,
-    CardContent,
-    Typography,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Chip,
-    Button,
-    Box,
-    Pagination,
-    IconButton,
-    Tooltip
-} from '@mui/material';
+import apiClient from '@/lib/api-client';
+import { mapBackendBatchHistory } from '@/services/api/batch-mapper';
+import type { 
+  APIResponse, 
+  Batch, 
+  BatchConfig, 
+  BatchResult, 
+  BatchResultFilters,
+  BatchResultSort,
+  PaginatedResponse 
+} from '@/types';
 
-import { Visibility as ViewIcon } from '@mui/icons-material';
-import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { batchService } from '@/services/api';
-import { QUERY_KEYS } from '@/constants';
-import { BATCH_STATUS_COLORS } from '@/constants/batch-config';
-import type { Batch } from '@/types';
+export const batchService = {
+  async startBatch(config: BatchConfig): Promise<Batch> {
+    const response = await apiClient.post<APIResponse<Batch>>('/api/batches/start', config);
+    if (response.data.status === 'error') {
+      throw new Error(response.data.message || 'Failed to start batch');
+    }
+    return response.data.data!;
+  },
 
-export function BatchHistory() {
-    const [page, setPage] = useState(1);
-    const [perPage] = useState(20);
-    const navigate = useNavigate();
+  async getQueue(): Promise<Batch[]> {
+    const response = await apiClient.get<APIResponse<Batch[]>>('/api/batches/queue');
+    if (response.data.status === 'error') {
+      throw new Error(response.data.message || 'Failed to get batch queue');
+    }
+    return response.data.data || [];
+  },
 
-    const {
-        data: historyData,
-        isLoading,
-        error,
-    } = useQuery({
-        queryKey: [...QUERY_KEYS.BATCH_HISTORY, page, perPage],
-        queryFn: () => batchService.getHistory(page, perPage),
+  async getHistory(page: number = 1, perPage: number = 20): Promise<PaginatedResponse<Batch>> {
+    try {
+      const response = await apiClient.get<APIResponse<any>>(
+        `/api/batches/history?page=${page}&per_page=${perPage}`
+      );
+      
+      if (response.data.status === 'error') {
+        throw new Error(response.data.message || 'Failed to get batch history');
+      }
+      
+      // Use mapper to convert backend format to frontend format
+      const mappedData = mapBackendBatchHistory(response.data.data);
+      return mappedData;
+      
+    } catch (error: any) {
+      console.error('Batch history error:', error);
+      // Return empty result structure on error
+      return {
+        items: [],
+        total: 0,
+        page: 1,
+        per_page: perPage,
+        total_pages: 0
+      };
+    }
+  },
+
+  async getBatchDetails(batchId: string): Promise<Batch> {
+    const response = await apiClient.get<APIResponse<Batch>>(`/api/batches/${batchId}`);
+    if (response.data.status === 'error') {
+      throw new Error(response.data.message || 'Failed to get batch details');
+    }
+    return response.data.data!;
+  },
+
+  async getBatchResults(
+    batchId: string, 
+    page: number = 1, 
+    perPage: number = 50,
+    filters?: BatchResultFilters,
+    sort?: BatchResultSort
+  ): Promise<PaginatedResponse<BatchResult>> {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      per_page: perPage.toString(),
     });
 
-    const handleViewBatch = (batchId: string) => {
-        navigate(`/batches/${batchId}`);
-    };
-
-    const handlePageChange = (_: React.ChangeEvent<unknown>, newPage: number) => {
-        setPage(newPage);
-    };
-
-    const formatDateTime = (dateString?: string) => {
-        return dateString ? new Date(dateString).toLocaleString() : 'N/A';
-    };
-
-    const formatDuration = (startTime?: string, endTime?: string) => {
-        if(!startTime || !endTime) return 'N/A';
-        const duration = new Date(endTime).getTime() - new Date(startTime).getTime();
-        const minutes = Math.floor(duration / 60000);
-        const seconds = Math.floor((duration % 60000) / 1000);
-        return `${minutes}m ${seconds}s`;
-    };
-
-    const getStatusColor = (status: Batch['status']) => {
-        return BATCH_STATUS_COLORS[status] as any;
-    };
-
-    if (isLoading) {
-        return (
-            <Card>
-                <CardContent>
-                    <Typography color="error">
-                        Error loadin batch history: {(error as any)?.message || 'Unknown error'}
-                    </Typography>
-                </CardContent>
-            </Card>
-        );
+    if (filters?.success !== undefined) {
+      params.append('success', filters.success.toString());
+    }
+    if (filters?.confidence_level) {
+      params.append('confidence_level', filters.confidence_level);
+    }
+    if (filters?.search) {
+      params.append('search', filters.search);
+    }
+    if (sort?.field) {
+      params.append('sort_field', sort.field);
+      params.append('sort_direction', sort.direction);
     }
 
-    if (error){
-        return (
-            <Card>
-                <CardContent>
-                    <Typography color="error">
-                        Error loading batch history: {(error as any)?.message || 'Unknown error'}
-                    </Typography>
-                </CardContent>
-            </Card>
-        );
-    }
-
-    return (
-        <Card>
-          <CardContent>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h6">
-                Batch History
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Total: {historyData?.total || 0} batches
-              </Typography>
-            </Box>
-    
-            {!historyData || historyData.items.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                No batch history found.
-              </Typography>
-            ) : (
-              <>
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Batch ID</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Items</TableCell>
-                        <TableCell>Success Rate</TableCell>
-                        <TableCell>Duration</TableCell>
-                        <TableCell>Created</TableCell>
-                        <TableCell align="center">Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {historyData.items.map((batch) => (
-                        <TableRow key={batch.id}>
-                          <TableCell>
-                            <Typography variant="body2" fontFamily="monospace">
-                              {batch.id.substring(0, 8)}...
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={batch.status}
-                              color={getStatusColor(batch.status)}
-                              size="small"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2">
-                              {batch.processed_items}/{batch.total_items}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              ({batch.progress.toFixed(1)}%)
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2">
-                              {batch.processed_items > 0 
-                                ? `${((batch.success_count / batch.processed_items) * 100).toFixed(1)}%`
-                                : 'N/A'
-                              }
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {batch.success_count}✓ {batch.error_count}✗
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2">
-                              {formatDuration(batch.started_at, batch.completed_at)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2">
-                              {formatDateTime(batch.created_at)}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              by {batch.created_by}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="center">
-                            <Tooltip title="View Details">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleViewBatch(batch.id)}
-                              >
-                                <ViewIcon />
-                              </IconButton>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-    
-                {historyData.total_pages > 1 && (
-                  <Box display="flex" justifyContent="center" mt={3}>
-                    <Pagination
-                      count={historyData.total_pages}
-                      page={page}
-                      onChange={handlePageChange}
-                      color="primary"
-                    />
-                  </Box>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+    const response = await apiClient.get<APIResponse<PaginatedResponse<BatchResult>>>(
+      `/api/batches/${batchId}/results?${params.toString()}`
     );
-}
+    if (response.data.status === 'error') {
+      throw new Error(response.data.message || 'Failed to get batch results');
+    }
+    return response.data.data!;
+  },
+
+  async pauseBatch(batchId: string): Promise<Batch> {
+    const response = await apiClient.post<APIResponse<Batch>>(`/api/batches/${batchId}/pause`);
+    if (response.data.status === 'error') {
+      throw new Error(response.data.message || 'Failed to pause batch');
+    }
+    return response.data.data!;
+  },
+
+  async resumeBatch(batchId: string): Promise<Batch> {
+    const response = await apiClient.post<APIResponse<Batch>>(`/api/batches/${batchId}/resume`);
+    if (response.data.status === 'error') {
+      throw new Error(response.data.message || 'Failed to resume batch');
+    }
+    return response.data.data!;
+  },
+
+  async cancelBatch(batchId: string): Promise<Batch> {
+    const response = await apiClient.post<APIResponse<Batch>>(`/api/batches/${batchId}/cancel`);
+    if (response.data.status === 'error') {
+      throw new Error(response.data.message || 'Failed to cancel batch');
+    }
+    return response.data.data!;
+  },
+};
