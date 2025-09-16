@@ -1,4 +1,5 @@
 import apiClient from '@/lib/api-client';
+import { mapBackendBatchHistory } from './batch-mapper';
 import type { 
   APIResponse, 
   Batch, 
@@ -28,7 +29,7 @@ export const batchService = {
 
   async getHistory(page: number = 1, perPage: number = 20): Promise<PaginatedResponse<Batch>> {
     try {
-      const response = await apiClient.get<APIResponse<PaginatedResponse<Batch>>>(
+      const response = await apiClient.get<APIResponse<any>>(
         `/api/batches/history?page=${page}&per_page=${perPage}`
       );
       
@@ -36,16 +37,10 @@ export const batchService = {
         throw new Error(response.data.message || 'Failed to get batch history');
       }
       
-      // Provide default structure if data is missing
-      const data = response.data.data || {
-        items: [],
-        total: 0,
-        page: 1,
-        per_page: perPage,
-        total_pages: 0
-      };
+      // Use mapper to convert backend format to frontend format
+      const mappedData = mapBackendBatchHistory(response.data.data);
+      return mappedData;
       
-      return data;
     } catch (error: any) {
       console.error('Batch history error:', error);
       // Return empty result structure on error
