@@ -39,7 +39,7 @@ export interface DashboardSummary {
   quality_metrics: QualityMetrics;
   recent_activity: ActivityItem[];
   recommendations: string[];
-  system_health: SystemHealth;
+  system_health: string;
   last_updated: string;
 }
 
@@ -80,16 +80,21 @@ export interface SystemHealth {
   last_check: string;
 }
 
-// Batch Types
+// Updated Batch Types
 export interface BatchConfig {
   batch_size: number;
+  start_index: number;
   confidence_threshold_high: number;
   confidence_threshold_medium: number;
+  max_processing_time: number;
+  retry_failed_items: boolean;
+  notification_webhook?: string;
+  priority: 'low' | 'normal' | 'high';
 }
 
 export interface Batch {
   id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'paused' | 'cancelled';
   config: BatchConfig;
   created_at: string;
   started_at?: string;
@@ -100,6 +105,7 @@ export interface Batch {
   success_count: number;
   error_count: number;
   created_by: string;
+  estimated_completion?: string;
 }
 
 export interface BatchResult {
@@ -109,10 +115,23 @@ export interface BatchResult {
   original_description: string;
   generated_description: string;
   confidence_score: number;
+  confidence_level: 'High' | 'Medium' | 'Low';
   status: 'success' | 'failed';
   error_message?: string;
   processing_time: number;
   timestamp: string;
+}
+
+// Batch filtering and search
+export interface BatchResultFilters {
+  success?: boolean;
+  confidence_level?: 'High' | 'Medium' | 'Low';
+  search?: string;
+}
+
+export interface BatchResultSort {
+  field: 'timestamp' | 'confidence_score' | 'processing_time';
+  direction: 'asc' | 'desc';
 }
 
 // Rule Types
