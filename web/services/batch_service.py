@@ -143,6 +143,29 @@ class BatchService:
             
             # Get all batches from batch manager
             all_batches = self.batch_manager.list_batches()
+            
+             # CORRECTED LOGGING
+            logger.info(f"==================== BATCH HISTORY DEBUG ====================")
+            logger.info(f"Retrieved {len(all_batches)} batches from manager")
+            
+            # Check if we have any batches
+            if len(all_batches) > 0:
+                # Log first 3 batches for debugging
+                for i in range(min(3, len(all_batches))):
+                    batch = all_batches[i]
+                    logger.info(f"Batch {i}: batch_id={batch.get('batch_id', 'MISSING')}")
+                    logger.info(f"  - status present: {batch.get('status') is not None}")
+                    if batch.get('status'):
+                        status_obj = batch.get('status')
+                        logger.info(f"  - status type: {type(status_obj).__name__}")
+                        # Try to get status string
+                        if hasattr(status_obj, 'status'):
+                            logger.info(f"  - status.status value: {status_obj.status}")
+            else:
+                logger.info("No batches found in batch manager")
+                
+            logger.info(f"==============================================================")
+
             history_items = []
             
             for batch_data in all_batches:
