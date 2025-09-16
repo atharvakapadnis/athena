@@ -23,17 +23,40 @@ export const batchService = {
     if (response.data.status === 'error') {
       throw new Error(response.data.message || 'Failed to get batch queue');
     }
-    return response.data.data!;
+    return response.data.data || [];
   },
 
   async getHistory(page: number = 1, perPage: number = 20): Promise<PaginatedResponse<Batch>> {
-    const response = await apiClient.get<APIResponse<PaginatedResponse<Batch>>>(
-      `/api/batches/history?page=${page}&per_page=${perPage}`
-    );
-    if (response.data.status === 'error') {
-      throw new Error(response.data.message || 'Failed to get batch history');
+    try {
+      const response = await apiClient.get<APIResponse<PaginatedResponse<Batch>>>(
+        `/api/batches/history?page=${page}&per_page=${perPage}`
+      );
+      
+      if (response.data.status === 'error') {
+        throw new Error(response.data.message || 'Failed to get batch history');
+      }
+      
+      // Provide default structure if data is missing
+      const data = response.data.data || {
+        items: [],
+        total: 0,
+        page: 1,
+        per_page: perPage,
+        total_pages: 0
+      };
+      
+      return data;
+    } catch (error: any) {
+      console.error('Batch history error:', error);
+      // Return empty result structure on error
+      return {
+        items: [],
+        total: 0,
+        page: 1,
+        per_page: perPage,
+        total_pages: 0
+      };
     }
-    return response.data.data!;
   },
 
   async getBatchDetails(batchId: string): Promise<Batch> {
