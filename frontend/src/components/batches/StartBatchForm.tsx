@@ -33,16 +33,33 @@ export function StartBatchForm({ onSuccess }: StartBatchFormProps) {
   
     const startBatchMutation = useMutation({
       mutationFn: batchService.startBatch,
-      onSuccess: (batch) => {
+      onSuccess: async (batch) => {
         setError('');
-        // Invalidate batch queue to show the new batch
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BATCH_QUEUE });
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BATCH_HISTORY });
-        onSuccess?.(batch);
-      },
-      onError: (err: any) => {
-        setError(err.message || 'Failed to start batch');
-      },
+
+        // Wait for the batch to be fully saved
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Force invalidate with exact query keys
+        await queryClient.invalidateQueries({ 
+          queryKey: QUERY_KEYS.BATCH_QUEUE,
+          exact: false,
+          refetchType: 'all'
+        });
+        
+        await queryClient.invalidateQueries({ 
+          queryKey: QUERY_KEYS.BATCH_HISTORY,
+          exact: false,
+          refetchType: 'all'
+        });
+
+      //Trigger the parents onSuccess callback
+      if (onSuccess) {
+        onSuccess(batch);
+      }
+    },
+    onError: (err: any) => {
+      setError(err.message || 'Failed to start batch');
+    },
     });
   
     const handleSubmit = (e: React.FormEvent) => {
