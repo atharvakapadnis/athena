@@ -666,39 +666,72 @@ class BatchService:
     def _convert_to_history_response(self, batch_id: str, batch_info) -> Optional[BatchHistoryResponse]:
         """Convert batch info to history response"""
         try:
-            total_items = getattr(batch_info, 'total_items', 0)
-            successful_items = getattr(batch_info, 'successful_items', 0)
-            success_rate = (successful_items / total_items) if total_items > 0 else 0.0
-        
-            # Calculate average confidence
-            high_count = getattr(batch_info, 'high_confidence_count', 0)
-            medium_count = getattr(batch_info, 'medium_confidence_count', 0)
-            low_count = getattr(batch_info, 'low_confidence_count', 0)
+            # Safely get values with defaults
+            total_items = getattr(batch_info, 'total_items', 0) or 0
+            successful_items = getattr(batch_info, 'successful_items', 0) or 0
+            processed_items = getattr(batch_info, 'processed_items', 0) or 0
+            
+            # Calculate success rate
+            success_rate = 0.0
+            if processed_items > 0:
+                success_rate = successful_items / processed_items
+            elif total_items > 0 and successful_items > 0:
+                success_rate = successful_items / total_items
+            
+            # Calculate average confidence - FIX THE NONE ADDITION ERROR HERE
+            high_count = getattr(batch_info, 'high_confidence_count', 0) or 0
+            medium_count = getattr(batch_info, 'medium_confidence_count', 0) or 0
+            low_count = getattr(batch_info, 'low_confidence_count', 0) or 0
+            
+            # Ensure these are integers, not None
+            high_count = int(high_count) if high_count is not None else 0
+            medium_count = int(medium_count) if medium_count is not None else 0
+            low_count = int(low_count) if low_count is not None else 0
+            
             total_confidence_items = high_count + medium_count + low_count
             avg_confidence = 0.0
             if total_confidence_items > 0:
                 avg_confidence = (high_count * 0.9 + medium_count * 0.7 + low_count * 0.4) / total_confidence_items
 
+            # Handle datetime fields safely
             start_time = getattr(batch_info, 'start_time', None)
             end_time = getattr(batch_info, 'end_time', None)
             processing_duration = None
+            
             if start_time and end_time:
-                processing_duration = (end_time - start_time).total_seconds()
+                try:
+                    if isinstance(start_time, datetime) and isinstance(end_time, datetime):
+                        processing_duration = (end_time - start_time).total_seconds()
+                except Exception as e:
+                    logger.debug(f"Could not calculate duration for {batch_id}: {e}")
+            
+            # Handle created_at
+            created_at = datetime.utcnow()
+            if start_time:
+                if isinstance(start_time, datetime):
+                    created_at = start_time
+                else:
+                    created_at = datetime.utcnow()
+            
+            # Handle completed_at
+            completed_at = None
+            if end_time and isinstance(end_time, datetime):
+                completed_at = end_time
 
             return BatchHistoryResponse(
                 batch_id=batch_id,
                 status=self._convert_status(batch_info.status),
                 batch_size=total_items,
-                items_processed=getattr(batch_info, 'processed_items', 0),
+                items_processed=processed_items,
                 total_items=total_items,
                 success_rate=success_rate,
                 average_confidence=avg_confidence,
-                created_at=datetime.fromisoformat(getattr(batch_info, 'start_time', datetime.utcnow()).isoformat()) if hasattr(getattr(batch_info, 'start_time', None), 'isoformat') else datetime.utcnow(),
-                completed_at=datetime.fromisoformat(getattr(batch_info, 'end_time', None).isoformat()) if getattr(batch_info, 'end_time', None) and hasattr(getattr(batch_info, 'end_time', None), 'isoformat') else None,
+                created_at=created_at,
+                completed_at=completed_at,
                 processing_duration=processing_duration
             )
         except Exception as e:
-            logger.error(f"Error converting batch history for {batch_id}: {e}")
+            logger.error(f"Error converting batch history for {batch_id}: {e}", exc_info=True)
             return None
     
     def _convert_status(self, status_str: str) -> BatchStatus:
