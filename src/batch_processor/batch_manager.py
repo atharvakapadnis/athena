@@ -148,7 +148,21 @@ class BatchManager:
 
     def update_batch_status(self, batch_id: str, status: BatchStatus):
         """Update batch status"""
+        # Adding logging
+        if batch_id != self.current_batch_id:
+            logger.info(f"Updating status for non current batch: {batch_id}")
+
         status_file = self.batches_dir / f"{batch_id}_status.json"
+        
+        # Convert datetime objects to ISO format strings for JSON serialization
+        status_data = asdict(status)
+        for time_field in ['start_time', 'end_time']:
+            if status_data.get(time_field) and isinstance(status_data[time_field], datetime):
+                status_data[time_field] = status_data[time_field].isoformat()
+        
+        # ADD THIS LOGGING
+        logger.info(f"Saving batch status for {batch_id} to {status_file}")
+        logger.info(f"Status data: status={status.status}, processed={status.processed_items}/{status.total_items}")
         
         with open(status_file, 'w') as f:
             json.dump(asdict(status), f, indent=2, default=str)
@@ -176,6 +190,16 @@ class BatchManager:
         """List all batches with their status"""
         batches = []
         
+        # Adding debug logging
+        logger.info(f"Scanning directory: {self.batches_dir}")
+        all_files = list(self.batches_dir.glob("*"))
+        logger.info(f"Found {len(all_files)} files in batches directory")
+        
+        metadata_files = list(self.batches_dir.glob("*_metadata.json"))
+        logger.info(f"Found {len(metadata_files)} metadata files")
+        if len(metadata_files) > 0:
+            logger.info(f"First metadata file: {metadata_files[0].name}")
+            
         for metadata_file in self.batches_dir.glob("*_metadata.json"):
             batch_id = metadata_file.stem.replace("_metadata", "")
             

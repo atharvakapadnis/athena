@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from ..services.batch_service import BatchService
-from ..models.batch import(
+from ..models.batch import (
     BatchConfigRequest, BatchResponse, BatchStatus,
     BatchHistoryResponse
 )
@@ -14,12 +14,16 @@ from ..models.user import User
 
 router = APIRouter()
 
+def get_batch_service() -> BatchService:
+    """Create a fresh BatchService instance for each request"""
+    return BatchService()
+
 @router.post("/start", response_model=APIResponse[BatchResponse])
 async def start_batch(
     config: BatchConfigRequest,
     background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
-    batch_service: BatchService = Depends(),
+    batch_service: BatchService = Depends(get_batch_service),
 ):
     """Start a new batch processing job"""
     try:
@@ -42,7 +46,7 @@ async def start_batch(
 @router.get("/queue", response_model=APIResponse[List[BatchResponse]])
 async def get_batch_queue(
     user: User = Depends(get_current_user),
-    batch_service: BatchService = Depends(),
+    batch_service: BatchService = Depends(get_batch_service),
 ):
     """Get the current batch queue"""
     try:
@@ -64,7 +68,7 @@ async def get_batch_history(
     page_size: int = 20,
     status: Optional[BatchStatus] = None,
     user: User = Depends(get_current_user),
-    batch_service: BatchService = Depends(),
+    batch_service: BatchService = Depends(get_batch_service),
 ):
     """ Get batch processing history with pagination """
     try:
@@ -88,7 +92,7 @@ async def get_batch_history(
 async def get_batch_details(
     batch_id: str,
     user: User = Depends(get_current_user),
-    batch_service: BatchService = Depends(),
+    batch_service: BatchService = Depends(get_batch_service),
 ):
     """ Get details of a specific batch """
     try:
@@ -113,7 +117,7 @@ async def get_batch_details(
 async def get_batch_results(
     batch_id: str,
     user: User = Depends(get_current_user),
-    batch_service: BatchService = Depends(),
+    batch_service: BatchService = Depends(get_batch_service),
 ):
     """ Get enhanced AI processing results for a batch """
     try:
@@ -134,36 +138,11 @@ async def get_batch_results(
             message=f"Failed to get enhanced results: {str(e)}",
         )
 
-# @router.get("/{batch_id}/complete", response_model=APIResponse[Dict])
-# async def get_complete_batch_details(
-#     batch_id: str,
-#     user: User = Depends(get_current_user),
-#     batch_service: BatchService = Depends(),
-# ):
-#     """ Get complete batch information including enhanced results """
-#     try:
-#         complete_info = await batch_service.get_batch_details_with_results(batch_id)
-#         if not complete_info:
-#             raise HTTPException(status_code=404, detail="Batch not found")
-        
-#         return APIResponse(
-#             status="success",
-#             data=complete_info,
-#             message="Complete batch information retrieved successfully",
-#         )
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         return APIResponse(
-#             status="error",
-#             message=f"Failed to get complete batch info: {str(e)}",
-#         )
-        
 @router.post("/{batch_id}/pause", response_model=APIResponse[Dict])
 async def pause_batch(
     batch_id: str,
     user: User = Depends(get_current_user),
-    batch_service: BatchService = Depends(),
+    batch_service: BatchService = Depends(get_batch_service),
 ):
     """ Pause a running batch """
     try:
@@ -183,7 +162,7 @@ async def pause_batch(
 async def resume_batch(
     batch_id: str,
     user: User = Depends(get_current_user),
-    batch_service: BatchService = Depends(),
+    batch_service: BatchService = Depends(get_batch_service),
 ):
     """ Resume a paused batch """
     try:
@@ -204,7 +183,7 @@ async def cancel_batch(
     batch_id: str,
     reason: Optional[str] = None,
     user: User = Depends(get_current_user),
-    batch_service: BatchService = Depends(),
+    batch_service: BatchService = Depends(get_batch_service),
 ):
     """ Cancel a batch """
     try:
@@ -219,81 +198,3 @@ async def cancel_batch(
             status="error",
             message=f"Failed to cancel batch: {str(e)}",
         )
-
-# Dynamic scaling endpoints
-# @router.get("/scaling/status", response_model=APIResponse[Dict])
-# async def get_scaling_status(
-#     user: User = Depends(get_current_user),
-#     batch_service: BatchService = Depends(),
-# ):
-#     """ Get dynamic scaling status"""
-#     try:
-#         status = await batch_service.get_scaling_status()
-#         return APIResponse(
-#             status="success",
-#             data=status,
-#             message="Scaling status retrieved successfully",
-#         )
-#     except Exception as e:
-#         return APIResponse(
-#             status="error",
-#             message=f"Failed to get scaling status: {str(e)}",
-#         )
-
-# @router.post("/scaling/configure", response_model=APIResponse[Dict])
-# async def configure_scaling(
-#     config: ScalingConfigRequest,
-#     user: User = Depends(get_current_user),
-#     batch_service: BatchService = Depends(),
-# ):
-#     """ Configure dynamic scaling parameters"""
-#     try:
-#         result = await batch_service.configure_scaling(config, user.username)
-#         return APIResponse(
-#             status="success",
-#             data=result,
-#             message="Scaling configuration updated successfully",
-#         )
-#     except Exception as e:
-#         return APIResponse(
-#             status="error",
-#             message=f"Failed to configure scaling: {str(e)}",
-#         )
-
-# @router.post("/scaling/enable", response_model=APIResponse[Dict])
-# async def enable_scaling(
-#     user: User = Depends(get_current_user),
-#     batch_service: BatchService = Depends(),
-# ):
-#     """ Enable dynamic scaling"""
-#     try:
-#         result = await batch_service.enable_scaling(user.username)
-#         return APIResponse(
-#             status="success",
-#             data=result,
-#             message=" Dynamic caling enabled successfully",
-#         )
-#     except Exception as e:
-#         return APIResponse(
-#             status="error",
-#             message=f"Failed to enable scaling: {str(e)}",
-#         )
-
-# @router.post("/scaling/disable", response_model=APIResponse[Dict])
-# async def disable_scaling(
-#     user: User = Depends(get_current_user),
-#     batch_service: BatchService = Depends(),
-# ):
-#     """ Disable dynamic scaling """
-#     try:
-#         result = await batch_service.disable_scaling(user.username)
-#         return APIResponse(
-#             status="success",
-#             data=result,
-#             message="Dynamic scaling disabled successfully"
-#         )
-#     except Exception as e:
-#         return APIResponse(
-#             status="error",
-#             message=f"Failed to disable scaling: {str(e)}",
-#         )

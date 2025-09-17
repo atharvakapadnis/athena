@@ -183,6 +183,11 @@ class BatchService:
                     if history_item:
                         history_items.append(history_item)
             
+            # NEW LOGGING After processing and before sorting
+            logger.info(f"Converted {len(history_items)} batch items for response")
+            if len(history_items) > 0:
+                logger.info(f"Latest batch in history: {history_items[0].batch_id if history_items else 'None'}")
+
             # Sort by creation date (most recent first)
             history_items.sort(key=lambda x: x.created_at, reverse=True)
             
@@ -191,6 +196,12 @@ class BatchService:
             start_idx = (page - 1) * page_size
             end_idx = start_idx + page_size
             paginated_items = history_items[start_idx:end_idx]
+            
+            # NEW LOGGING for pagination results
+            logger.info(f"Returning {len(paginated_items)} items in page {page} (total: {total})")
+            if paginated_items:
+                logger.info(f"First item in page: {paginated_items[0].batch_id}")
+            logger.info(f"==============================================================")
             
             return {
                 'items': [item.dict() for item in paginated_items],
@@ -706,12 +717,19 @@ class BatchService:
                     logger.debug(f"Could not calculate duration for {batch_id}: {e}")
             
             # Handle created_at
-            created_at = datetime.utcnow()
+            created_at = None
             if start_time:
                 if isinstance(start_time, datetime):
                     created_at = start_time
-                else:
-                    created_at = datetime.utcnow()
+                elif isinstance(start_time, str):
+                    try:
+                        created_at = datetime.fromisoformat(start_time)
+                    except:
+                        pass
+
+            if not created_at:
+                logger.warning(f"Batch {batch_id} has no valid starttime, skipping")
+                return None
             
             # Handle completed_at
             completed_at = None
